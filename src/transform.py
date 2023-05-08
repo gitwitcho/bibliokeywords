@@ -119,7 +119,3 @@ def filter_biblio_df(biblio_df: pd.DataFrame,
 
     # Return the filtered DataFrame
     return filtered_df
-
-def dummy():
-    x = 19
-    pass
