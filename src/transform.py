@@ -7,10 +7,7 @@ from utilities import *
 
 def reshape_cols_biblio_df(biblio_df: pd.DataFrame,
                       reshape_base: Optional[Reshape] = None,
-                      reshape_filter: Optional[Union[Dict,List]] = None,
-                      project: Optional[str] = None,
-                      output_file: Optional[str] = None,
-                      output_dir: Optional[str] = None
+                      reshape_filter: Optional[Union[Dict,List]] = None
                       ) -> pd.DataFrame:
     
     root_dir = get_root_dir()
@@ -31,16 +28,16 @@ def reshape_cols_biblio_df(biblio_df: pd.DataFrame,
             biblio_df = biblio_df[list(reshape_filter.keys())].rename(columns = reshape_filter)
 
 
-    if output_file and output_dir and project:
-        logger.info(f"Writing biblio_df to file {output_file}")
-        output_path = Path(root_dir, data_root_dir, project, output_dir, output_file)
+    # if output_file and output_dir and project:
+    #     logger.info(f"Writing biblio_df to file {output_file}")
+    #     output_path = Path(root_dir, data_root_dir, project, output_dir, output_file)
         
-        if Path(output_file).suffix == '.csv':
-            biblio_df.to_csv(output_path, index = False)
-        elif Path(output_file).suffix == '.xlsx':
-            biblio_df.to_excel(output_path, index = False)
-    elif not all([project, output_dir, output_file]) and any([project, output_dir, output_file]):
-        raise ValueError("You need to provide all three values for project, output_file, and output_dir if you want to write the output to a file")
+    #     if Path(output_file).suffix == '.csv':
+    #         biblio_df.to_csv(output_path, index = False)
+    #     elif Path(output_file).suffix == '.xlsx':
+    #         biblio_df.to_excel(output_path, index = False)
+    # elif not all([project, output_dir, output_file]) and any([project, output_dir, output_file]):
+    #     raise ValueError("You need to provide all three values for project, output_file, and output_dir if you want to write the output to a file")
 
     return biblio_df
 
