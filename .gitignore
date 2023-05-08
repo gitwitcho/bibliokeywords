@@ -1,0 +1,12 @@
+.vscode/
+.ipynb_checkpoints/
+data/mabs_repsol/
+data/ml_and_anomaly/
+data/ml_in_engineering/
+data/ml_in_medicine/
+data/PINNs/
+data/practice_onboarding/
+data/processed/
+data/raw/
+data/results/
+data/systemic_risk/
