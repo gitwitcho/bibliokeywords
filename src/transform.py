@@ -128,7 +128,7 @@ def clean_biblio_df(biblio_df: pd.DataFrame,
     biblio_df['title'] = biblio_df['title'].str.replace(r'^[-.]+\s*\w+\s*|[-.]+(?!\w)|(\s|^)[^Aa\s+](\s+|$)', '', regex = True)
 
     # Remove excess whitespace
-    biblio_df['title'] = biblio_df['title'].str.replace('\s+', ' ', regex = True).str.strip()
+    biblio_df['title'] = biblio_df['title'].str.replace(r'\s+', ' ', regex = True).str.strip()
 
     # Remove any remaining empty titles
     count_titles = biblio_df.shape[0]
@@ -170,7 +170,7 @@ def clean_biblio_df(biblio_df: pd.DataFrame,
     biblio_df['abstract'] = biblio_df['abstract'].str.replace(r'^[-.]+\s*\w+\s*|(\s|^)[^Aa\s+](\s+|$)', '', regex = True)
 
     # Remove excess whitespace
-    biblio_df['abstract'] = biblio_df['abstract'].str.replace('\s+', ' ', regex = True).str.strip()
+    biblio_df['abstract'] = biblio_df['abstract'].str.replace(r'\s+', ' ', regex = True).str.strip()
 
 
     """
