@@ -148,9 +148,7 @@ def read_and_merge_csv_files(project: str,
                              input_dir: str, 
                              csv_files: Union[str, List[str]] = '', 
                              n_rows: Optional[int] = None,
-                             is_dimensions: bool = False,
-                             output_file: Optional[str] = None,
-                             output_dir: Optional[str] = None
+                             is_dimensions: bool = False
                              ) -> pd.DataFrame:
     
     root_dir = get_root_dir()
@@ -160,7 +158,7 @@ def read_and_merge_csv_files(project: str,
     if not _input_dir.exists():
         raise ValueError(f"The folder {_input_dir} does not exist")
     
-    check_output_file(root_dir, project, output_file, output_dir)
+    # check_output_file(root_dir, project, output_file, output_dir)
     
     # Skip the first row in a Dimensions CSV file, which contains details about the search
     skip_rows = 1 if is_dimensions else 0
@@ -192,14 +190,14 @@ def read_and_merge_csv_files(project: str,
 
     logger.info(f"Total number of publications in the dataframe: {len(biblio_df)}")
 
-    if output_file and output_dir:
-        logger.info(f"Writing biblio_df to file {output_file}")
-        output_path = Path(root_dir, 'data', project, output_dir, output_file)
+    # if output_file and output_dir:
+    #     logger.info(f"Writing biblio_df to file {output_file}")
+    #     output_path = Path(root_dir, 'data', project, output_dir, output_file)
         
-        if Path(output_file).suffix == '.csv':
-            biblio_df.to_csv(output_path, index = False)
-        elif Path(output_file).suffix == '.xlsx':
-            biblio_df.to_excel(output_path, index = False)
+    #     if Path(output_file).suffix == '.csv':
+    #         biblio_df.to_csv(output_path, index = False)
+    #     elif Path(output_file).suffix == '.xlsx':
+    #         biblio_df.to_excel(output_path, index = False)
 
     return biblio_df
 
