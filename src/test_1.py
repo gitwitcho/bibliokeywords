@@ -18,6 +18,8 @@ biblio_df = reshape_cols_biblio_df(biblio_df = biblio_df,
                               reshape_base = Reshape.SCOPUS_COMPACT,
                               reshape_filter = ['title', 'year', 'abstract'])
 
+
+
 write_df(biblio_df = biblio_df,
                      project = project,
                      output_dir = 'processed',
