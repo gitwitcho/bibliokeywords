@@ -200,16 +200,3 @@ def read_and_merge_csv_files(project: str,
     #         biblio_df.to_excel(output_path, index = False)
 
     return biblio_df
-
-
-
-
-def read_biblio_files() -> None:
-    pass
-
-
-def clean_biblio_files() -> None:
-    pass
-
-
-# create_biblio_data_folders("ml_in_engineering")
