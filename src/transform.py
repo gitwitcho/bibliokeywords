@@ -65,45 +65,83 @@ def add_biblio_source(biblio_df: pd.DataFrame,
     return biblio_df
 
 
-def format_auth_affils_scopus(x: str):
-    names = [name.strip().split('.,', maxsplit=1) for name in x.split(';')]
-    names = ['{} ({})'.format(parts[0].strip(), parts[1].strip()) if len(parts) == 2 else parts[0].strip() for parts in names]
-    return '; '.join(names)
+def format_auth_affils_scopus(x: Union[str, float]) -> Union[str, float]:
+        
+    auth_affils =[]
 
-
-def format_auth_affils_dims(x: str) -> Union[str, float]:
-    # Split the input string at the opening parenthesis
-    parts = x.strip().split('(', maxsplit=1)
-
-    # Extract the affiliation, if present
-    if len(parts) == 2:
-        affiliation = parts[1].strip('()')
+    if isinstance(x, str):
+        if x != '':
+            auth_affils = [re.split(r'\.\s*,|.\s+,\s*', name.strip(), maxsplit = 1) for name in x.split(';')]
+            auth_affils = [[parts[0] + '.' if len(parts) > 1 else parts[0], parts[1].strip()] if len(parts) > 1 else 
+                        [parts[0].strip()] for parts in auth_affils]
+        else:
+            return 'Anonymous ()'
     else:
-        affiliation = ''
+        return np.nan
 
-    # Extract the author information, if present
-    if parts[0]:
-        author_parts = parts[0].split(',', maxsplit=1)
-        surname = author_parts[0].strip()
-        name_parts = [part.strip() for part in author_parts[1].split()]
+    auth_affil_str_lst = []
 
-        # Format the author name using the first letter of each name part
-        initials = [part[0] + '.' if not part.endswith('.') else part for part in name_parts]
-        name = ''.join(initials)
+    for auth_affil in auth_affils:
+        
+        # If author_affil has just one, assume that the affiliation is missing
+        if len(auth_affil) == 1:
+            auth_affil_str = '{} ()'.format(auth_affil[0].strip())
+        else:
+            auth_affil_str = '{} ({})'.format(auth_affil[0].strip(), auth_affil[1].strip())
+        
+        auth_affil_str_lst.append(auth_affil_str)
+
+    return '; '.join(auth_affil_str_lst)
+
+
+def format_auth_affils_dims(x: Union[str, float]) -> Union[str, float]:
+    
+    # The auth_affil strings are split at ';' except if the ';' is inside of parentheses. In that case, it
+    # separates multiple affiliations.
+    if isinstance(x, str):
+        auth_affils = [part.strip().split('(', maxsplit = 1) for part in re.split(r';(?![^()]*\))', x.strip())]
     else:
-        # No author information
-        surname = ''
-        name = ''
+        return np.nan
 
-    # Construct the final string
-    if surname:
-        auaff = f'{surname}, {name} ({affiliation})'
-    elif affiliation:
-        auaff = f'Anonymous ({affiliation})'
+    auth_affil_str_lst = []
+
+    for auth_affil in auth_affils:
+
+        # Extract the affiliation, if present
+        if len(auth_affil) == 2:
+            affiliation = auth_affil[1][:-1] if auth_affil[1].endswith(')') else auth_affil[1]
+
+        else:
+            affiliation = ''
+
+        # Extract the author information, if present
+        if auth_affil[0]:
+            author_parts = auth_affil[0].split(',', maxsplit=1)
+            surname = author_parts[0].strip()
+            name_parts = [part.strip() for part in author_parts[1].split()]
+
+            # Format the author name using the first letter of each name part
+            initials = [part[0] + '.' if not part.endswith('.') else part for part in name_parts]
+            name = ''.join(initials)
+        else:
+            # No author information
+            surname = ''
+            name = ''
+
+        # Construct the final string
+        auth_affil_str = np.nan
+
+        if surname:
+            auth_affil_str = f'{surname}, {name} ({affiliation})'
+        elif affiliation:
+            auth_affil_str = f'Anonymous ({affiliation})'
+
+        auth_affil_str_lst.append(auth_affil_str)
+
+    if len(auth_affil_str_lst) == 0 or all(x is np.nan for x in auth_affil_str_lst):
+        return np.nan
     else:
-        auaff = np.nan
-
-    return auaff
+        return '; '.join(auth_affil_str_lst)
 
 
 def normalise_biblio_entities(biblio_df: pd.DataFrame,
@@ -121,31 +159,42 @@ def normalise_biblio_entities(biblio_df: pd.DataFrame,
         if 'ext_url' in biblio_df.columns:
             biblio_df['link'] = biblio_df['ext_url']
             biblio_df['links'] = biblio_df['source_urls']
+        else:
+            biblio_df['link'] = np.nan
+            biblio_df['links'] = np.nan
     elif biblio_source == BiblioType.DIMS:
         if 'ext_url' in biblio_df.columns:
             biblio_df['link'] = biblio_df['ext_url']
             biblio_df['links'] = biblio_df['ext_url']
+        else:
+            biblio_df['link'] = np.nan
+            biblio_df['links'] = np.nan
 
     # Create the unified keywords list kws
     if biblio_source == BiblioType.SCOPUS:
         biblio_df['kws'] = biblio_df.apply(
-            lambda row: ';'.join(set(
-                row['kws_author'].split(';') if 'kws_author' in row else []
-                + row['kws_index'].split(';') if 'kws_index' in row else []
-            )), axis=1)
+            lambda row: '; '.join(sorted(set(
+                [kw.strip() for kw in row[['kws_author', 'kws_index']].str.cat(sep = ';', na_rep = '').lower().split(';') if kw.strip()]
+            ))), axis=1)
+            
     elif biblio_source == BiblioType.LENS:
         biblio_df['kws'] = biblio_df.apply(
-            lambda row: ';'.join(set(
-                row['kws_lens'].split(';') if 'kws_lens' in row else []
-                + row['mesh'].split(';') if 'mesh' in row else []
-            )), axis=1)
+            lambda row: '; '.join(sorted(set(
+                [kw.strip() for kw in row[['kws_lens', 'mesh']].str.cat(sep = ';', na_rep = '').lower().split(';') if kw.strip()]
+            ))), axis=1)
     elif biblio_source == BiblioType.DIMS:
-        biblio_df['kws'] = biblio_df['mesh']
+        if 'mesh' in biblio_df.columns:
+            # biblio_df['kws'] = biblio_df['kws'].apply(lambda x: '; '.join(sorted(x.split('; '))))
+            biblio_df['kws'] = biblio_df['mesh'].apply(lambda x: '; '.join(sorted(x.lower().split('; '))) 
+                                                       if pd.notna(x) and ';' in x else x.lower() if pd.notna(x) else np.nan)
+        else:
+            biblio_df['kws'] = np.nan
 
     # Format the author affiliations
     if biblio_source == BiblioType.SCOPUS:
-        biblio_df['auth_affils'] = biblio_df.apply(format_auth_affils_scopus)
-
+        biblio_df['auth_affils'] = biblio_df['auth_affils'].apply(format_auth_affils_scopus)
+    if biblio_source == BiblioType.DIMS:
+        biblio_df['auth_affils'] = biblio_df['auth_affils'].apply(format_auth_affils_dims)
 
     return biblio_df
 
