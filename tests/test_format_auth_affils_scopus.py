@@ -5,7 +5,6 @@ sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..',
 
 import numpy as np
 import pandas as pd
-import pytest
 from typing import Union
 from transform import format_auth_affils_scopus
 
@@ -59,5 +58,3 @@ def test_format_auth_affils_scopus():
     expected_output = 'Smith, J. (Harvard University); Brown, M. (NYU Stern)'
     output_str = format_auth_affils_scopus(input_str)
     assert output_str == expected_output
-
-test_format_auth_affils_scopus()

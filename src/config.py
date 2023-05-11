@@ -11,6 +11,7 @@ class BiblioType(Enum):
     LENS = 2
     DIMS = 3
     BIBLIO = 4
+    UNDEFINED = 5
 
 class Reshape(Enum):
     SCOPUS_ALL = 1
@@ -38,7 +39,7 @@ reshape_struc_scopus_all = {'Authors': 'authors',
                              'DOI': 'doi', 
                              'Link': 'link', 
                              'Affiliations': 'affils', 
-                             'Authors with affiliations': 'author_affils', 
+                             'Authors with affiliations': 'auth_affils', 
                              'Abstract': 'abstract', 
                              'Author Keywords': 'kws_author', 
                              'Index Keywords': 'kws_index', 
@@ -55,7 +56,8 @@ reshape_struc_scopus_all = {'Authors': 'authors',
                              'Publication Stage': 'pub_stage',
                              'Open Access': 'open',
                              'Source':'source',
-                             'EID':'scopus_id'}
+                             'EID':'scopus_id',
+                             'bib_src': 'bib_src'}
 reshape_struc_scopus_full = {'Authors': 'authors', 
                              'Author(s) ID': 'author_ids', 
                              'Title': 'title', 
@@ -65,7 +67,7 @@ reshape_struc_scopus_full = {'Authors': 'authors',
                              'DOI': 'doi', 
                              'Link': 'link', 
                              'Affiliations': 'affils', 
-                             'Authors with affiliations': 'author_affils', 
+                             'Authors with affiliations': 'auth_affils', 
                              'Abstract': 'abstract', 
                              'Author Keywords': 'kws_author', 
                              'Index Keywords': 'kws_index', 
@@ -77,7 +79,8 @@ reshape_struc_scopus_full = {'Authors': 'authors',
                              'Abbreviated Source Title': 'source_abbrev',
                              'Document Type': 'doc_type',
                              'Open Access': 'open',
-                             'EID':'scopus_id'}
+                             'EID':'scopus_id',
+                             'bib_src': 'bib_src'}
 
 reshape_struc_scopus_compact = {'Authors': 'authors', 
                                 'Author(s) ID': 'author_ids', 
@@ -86,14 +89,14 @@ reshape_struc_scopus_compact = {'Authors': 'authors',
                                 'Source title': 'source', 
                                 'Cited by': 'n_cited',
                                 'DOI': 'doi', 
-                                'Authors with affiliations': 'author_affils', 
                                 'Abstract': 'abstract', 
                                 'Author Keywords': 'kws_author', 
                                 'Index Keywords': 'kws_index', 
                                 'Language of Original Document': 'lang',
                                 'Abbreviated Source Title': 'source_abbrev',
                                 'Document Type': 'doc_type',
-                                'EID':'scopus_id'}
+                                'EID':'scopus_id',
+                                'bib_src': 'bib_src'}
 
 reshape_struc_lens_all = {'Lens ID': 'lens_id', 
                           'Title': 'title', 
@@ -126,7 +129,8 @@ reshape_struc_lens_all = {'Lens ID': 'lens_id',
                           'Citing Works Count':'n_cited',
                           'Is Open Access':'open',
                           'Open Access License':'open_license',
-                          'Open Access Colour':'open_colour'}
+                          'Open Access Colour':'open_colour',
+                          'bib_src': 'bib_src'}
 
 reshape_struc_lens_full = {'Lens ID': 'lens_id', 
                           'Title': 'title', 
@@ -145,7 +149,8 @@ reshape_struc_lens_full = {'Lens ID': 'lens_id',
                           'DOI':'doi',
                           'References':'references',
                           'Citing Works Count':'n_cited',
-                          'Is Open Access':'open'}
+                          'Is Open Access':'open',
+                          'bib_src': 'bib_src'}
 
 reshape_struc_lens_compact = {'Lens ID': 'lens_id', 
                             'Title': 'title', 
@@ -158,7 +163,8 @@ reshape_struc_lens_compact = {'Lens ID': 'lens_id',
                             'Keywords':'kws_lens',
                             'MeSH Terms':'mesh',
                             'External URL':'ext_url',
-                            'Citing Works Count':'n_cited'}
+                            'Citing Works Count':'n_cited',
+                            'bib_src': 'bib_src'}
 
 reshape_struc_dims_all = {'Rank': 'rank', 
                           'Publication ID': 'dim_id', 
@@ -185,9 +191,9 @@ reshape_struc_dims_all = {'Rank': 'rank',
                           'Open Access':'open',
                           'Publication Type':'pub_type',
                           'Authors':'authors',
-                          'Authors (Raw Affiliation)':'author_affils',
-                          'Corresponding Authors':'author_corresp',
-                          'Authors Affiliations':'author_affils_2',
+                          'Authors (Raw Affiliation)':'auth_affils',
+                          'Corresponding Authors':'auth_corresp',
+                          'Authors Affiliations':'auth_affils_2',
                           'Research Organizations - standardized':'res_orgs_std',
                           'GRID IDs':'grid_ids',
                           'City of Research organization':'city_res_org',
@@ -212,7 +218,8 @@ reshape_struc_dims_all = {'Rank': 'rank',
                           'Cancer Types':'cancer_types',
                           'CSO Categories':'cso',
                           'Units of Assessment':'units_assess',
-                          'Sustainable Development Goals':'sdg'}
+                          'Sustainable Development Goals':'sdg',
+                          'bib_src': 'bib_src'}
 
 reshape_struc_dims_full = {'Rank': 'rank', 
                           'Publication ID': 'dim_id', 
@@ -228,7 +235,7 @@ reshape_struc_dims_full = {'Rank': 'rank',
                           'Open Access':'open',
                           'Publication Type':'pub_type',
                           'Authors':'authors',
-                          'Authors (Raw Affiliation)':'author_affils',
+                          'Authors (Raw Affiliation)':'auth_affils',
                           'Times cited':'n_cited',
                           'RCR':'rcr',
                           'FCR':'fcr',
@@ -238,7 +245,8 @@ reshape_struc_dims_full = {'Rank': 'rank',
                           'Fields of Research (ANZSRC 2020)':'anzsrc_2020',
                           'RCDC Categories':'rcdc',
                           'HRCS HC Categories':'hrcs_hc',
-                          'HRCS RAC Categories':'hrcs_rac'}
+                          'HRCS RAC Categories':'hrcs_rac',
+                          'bib_src': 'bib_src'}
 
 reshape_struc_dims_compact = {'Publication ID': 'dim_id', 
                           'Title': 'title',
@@ -251,7 +259,8 @@ reshape_struc_dims_compact = {'Publication ID': 'dim_id',
                           'Times cited':'n_cited',
                           'Source Linkout':'ext_url',
                           'Dimensions URL':'dims_url',
-                          'Fields of Research (ANZSRC 2020)':'anzsrc_2020'}
+                          'Fields of Research (ANZSRC 2020)':'anzsrc_2020',
+                          'bib_src': 'bib_src'}
 
 reshape_strucs = {Reshape.SCOPUS_ALL.value: reshape_struc_scopus_all,
                   Reshape.SCOPUS_FULL.value: reshape_struc_scopus_full,

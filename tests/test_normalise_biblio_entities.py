@@ -124,7 +124,3 @@ def test_normalise_biblio_entities():
         assert output_df[col].equals(expected_df[col])
 
     assert output_df.equals(expected_df)
-    
-
-
-test_normalise_biblio_entities()

@@ -2,14 +2,15 @@ import pandas as pd
 import numpy as np
 import re
 
-from typing import List, Optional, Union, Dict
+from typing import List, Optional, Union, Dict, Tuple
 from config import *
 from utilities import *
 
 
 def reshape_cols_biblio_df(biblio_df: pd.DataFrame,
                       reshape_base: Optional[Reshape] = None,
-                      reshape_filter: Optional[Union[Dict,List]] = None
+                      reshape_filter: Optional[Union[Dict,List]] = None,
+                      keep_bib_src: bool = True,
                       ) -> pd.DataFrame:
     
     root_dir = get_root_dir()
@@ -28,18 +29,6 @@ def reshape_cols_biblio_df(biblio_df: pd.DataFrame,
             if not all(col in biblio_df.columns for col in reshape_filter.keys()):
                 raise ValueError(f"One or more columns not found in biblio_df: {reshape_filter}")
             biblio_df = biblio_df[list(reshape_filter.keys())].rename(columns = reshape_filter)
-
-
-    # if output_file and output_dir and project:
-    #     logger.info(f"Writing biblio_df to file {output_file}")
-    #     output_path = Path(root_dir, data_root_dir, project, output_dir, output_file)
-        
-    #     if Path(output_file).suffix == '.csv':
-    #         biblio_df.to_csv(output_path, index = False)
-    #     elif Path(output_file).suffix == '.xlsx':
-    #         biblio_df.to_excel(output_path, index = False)
-    # elif not all([project, output_dir, output_file]) and any([project, output_dir, output_file]):
-    #     raise ValueError("You need to provide all three values for project, output_file, and output_dir if you want to write the output to a file")
 
     return biblio_df
 
@@ -65,11 +54,73 @@ def add_biblio_source(biblio_df: pd.DataFrame,
     return biblio_df
 
 
+def format_auth_scopus(authors: Union[str, float]) -> Union[str, float]:
+
+    if isinstance(authors, str) and authors != '':
+        authors_lst = authors.split(',')
+
+        authors_str_lst = []
+
+        for author in authors_lst:
+            # author = author.replace(',', '')
+            author_parts = author.strip().split()
+            surname = author_parts[0].strip()
+            initials = [name.strip()[0] + '.' if not name.endswith('.') else name.strip() for name in author_parts[1:]]
+            initials = ''.join(initials)
+            author_str = '{}, {}'.format(surname, initials)
+            authors_str_lst.append(author_str)
+
+        return '; '.join(authors_str_lst)
+    else:
+        return np.nan
+
+
+def format_auth_lens(authors: Union[str, float]) -> Union[str, float]:
+
+    if isinstance(authors, str) and authors != '':
+        authors_lst = authors.split(';')
+
+        authors_str_lst = []
+
+        for author in authors_lst:
+            author_parts = author.strip().split()
+            surname = author_parts[-1]
+            initials = [name[0] + '.' if not name.endswith('.') else name for name in author_parts[:-1]]
+            initials = ''.join(initials)
+            author_str = '{}, {}'.format(surname.strip(), initials.strip())
+            authors_str_lst.append(author_str)
+
+        return '; '.join(authors_str_lst)
+    else:
+        return np.nan
+
+
+def format_auth_dims(authors: Union[str, float]) -> Union[str, float]:
+
+    if isinstance(authors, str) and authors != '':
+        authors_lst = authors.split(';')
+
+        authors_str_lst = []
+
+        for author in authors_lst:
+            author = author.replace(',', '')
+            author_parts = author.strip().split()
+            surname = author_parts[0].strip()
+            initials = [name.strip()[0] + '.' if not name.endswith('.') else name.strip() for name in author_parts[1:]]
+            initials = ''.join(initials)
+            author_str = '{}, {}'.format(surname, initials)
+            authors_str_lst.append(author_str)
+
+        return '; '.join(authors_str_lst)
+    else:
+        return np.nan
+
+
 def format_auth_affils_scopus(x: Union[str, float]) -> Union[str, float]:
         
     auth_affils =[]
 
-    if isinstance(x, str):
+    if isinstance(x, str):  # prevents a Pylance error in x.split()
         if x != '':
             auth_affils = [re.split(r'\.\s*,|.\s+,\s*', name.strip(), maxsplit = 1) for name in x.split(';')]
             auth_affils = [[parts[0] + '.' if len(parts) > 1 else parts[0], parts[1].strip()] if len(parts) > 1 else 
@@ -98,7 +149,7 @@ def format_auth_affils_dims(x: Union[str, float]) -> Union[str, float]:
     
     # The auth_affil strings are split at ';' except if the ';' is inside of parentheses. In that case, it
     # separates multiple affiliations.
-    if isinstance(x, str):
+    if isinstance(x, str):  # prevents a Pylance error in x.split()
         auth_affils = [part.strip().split('(', maxsplit = 1) for part in re.split(r';(?![^()]*\))', x.strip())]
     else:
         return np.nan
@@ -144,8 +195,40 @@ def format_auth_affils_dims(x: Union[str, float]) -> Union[str, float]:
         return '; '.join(auth_affil_str_lst)
 
 
+def get_biblio_source_string(biblio_source: BiblioType) -> Union[str, float]:
+    biblio_source_str = np.nan
+
+    if biblio_source == BiblioType.SCOPUS:
+        biblio_source_str = 'scopus'
+    elif biblio_source == BiblioType.LENS:
+        biblio_source_str = 'lens'
+    elif biblio_source == BiblioType.DIMS:
+        biblio_source_str = 'dims'
+    elif biblio_source == BiblioType.BIBLIO:
+        biblio_source_str = 'biblio'
+    
+    return biblio_source_str
+
+
 def normalise_biblio_entities(biblio_df: pd.DataFrame,
-                              biblio_source: BiblioType) -> pd.DataFrame:
+                              biblio_source: BiblioType = BiblioType.UNDEFINED
+                              ) -> pd.DataFrame:
+
+    if biblio_source == BiblioType.UNDEFINED:
+        if 'bib_src' in biblio_df.columns:
+            if (biblio_df['bib_src'].isin(['scopus', 'lens', 'dims', 'biblio'])).all():
+                if biblio_df.loc[0, 'bib_src'] == 'scopus':
+                    biblio_source = BiblioType.SCOPUS
+                elif biblio_df.loc[0, 'bib_src'] == 'lens':
+                    biblio_source = BiblioType.LENS
+                elif biblio_df.loc[0, 'bib_src'] == 'dims':
+                    biblio_source = BiblioType.DIMS
+                elif biblio_df.loc[0, 'bib_src'] == 'biblio':
+                    biblio_source = BiblioType.BIBLIO
+            else:
+                raise ValueError(f"The bib_src needs to be the same for all records in biblio_df")
+        else:
+            raise ValueError(f"You either need to pass a biblio_source to the function or add a bib_src column")
 
     # Create the clickable link and the list of all links
     if biblio_source == BiblioType.SCOPUS:
@@ -156,12 +239,14 @@ def normalise_biblio_entities(biblio_df: pd.DataFrame,
             biblio_df['link'] = np.nan
             biblio_df['links'] = np.nan
     elif biblio_source == BiblioType.LENS:
+        biblio_df['link'] = np.nan
+        biblio_df['links'] = np.nan
+
         if 'ext_url' in biblio_df.columns:
             biblio_df['link'] = biblio_df['ext_url']
+        if 'source_urls' in biblio_df.columns:
             biblio_df['links'] = biblio_df['source_urls']
-        else:
-            biblio_df['link'] = np.nan
-            biblio_df['links'] = np.nan
+            
     elif biblio_source == BiblioType.DIMS:
         if 'ext_url' in biblio_df.columns:
             biblio_df['link'] = biblio_df['ext_url']
@@ -190,16 +275,39 @@ def normalise_biblio_entities(biblio_df: pd.DataFrame,
         else:
             biblio_df['kws'] = np.nan
 
+    # Format the authors
+    if 'authors' in biblio_df.columns:
+        if biblio_source == BiblioType.SCOPUS:
+            biblio_df['authors'] = biblio_df['authors'].apply(format_auth_scopus)
+        elif biblio_source == BiblioType.LENS:
+            biblio_df['authors'] = biblio_df['authors'].apply(format_auth_lens)
+        elif biblio_source == BiblioType.DIMS:
+            biblio_df['authors'] = biblio_df['authors'].apply(format_auth_dims)
+
     # Format the author affiliations
-    if biblio_source == BiblioType.SCOPUS:
-        biblio_df['auth_affils'] = biblio_df['auth_affils'].apply(format_auth_affils_scopus)
-    if biblio_source == BiblioType.DIMS:
-        biblio_df['auth_affils'] = biblio_df['auth_affils'].apply(format_auth_affils_dims)
+    if 'auth_affils' in biblio_df.columns:
+        if biblio_source == BiblioType.SCOPUS:
+            biblio_df['auth_affils'] = biblio_df['auth_affils'].apply(format_auth_affils_scopus)
+        elif biblio_source == BiblioType.DIMS:
+            biblio_df['auth_affils'] = biblio_df['auth_affils'].apply(format_auth_affils_dims)
+
+    # Lower casing some other fields
+    if 'fos' in biblio_df.columns:
+        biblio_df['fos'] = biblio_df['fos'].str.lower()
+    if 'kws_lens' in biblio_df.columns:
+        biblio_df['kws_lens'] = biblio_df['kws_lens'].fillna('').str.lower()
+    if 'mesh' in biblio_df.columns:
+        biblio_df['mesh'] = biblio_df['mesh'].fillna('').str.lower()
+    if 'kws_author' in biblio_df.columns:
+        biblio_df['kws_author'] = biblio_df['kws_author'].fillna('').str.lower()
+    if 'kws_index' in biblio_df.columns:
+        biblio_df['kws_index'] = biblio_df['kws_index'].fillna('').str.lower()
+
 
     return biblio_df
 
 
-def remove_title_duplicates(biblio_df: pd.DataFrame):
+def remove_title_duplicates(biblio_df: pd.DataFrame) -> Tuple[pd.DataFrame, pd.DataFrame]:
     """
         Removing duplicate publications by title
 
@@ -217,10 +325,14 @@ def remove_title_duplicates(biblio_df: pd.DataFrame):
     # Create a copy of the input DataFrame
     biblio_df_copy = biblio_df.copy()
 
-    logger.info(f"There are {biblio_df_copy.shape[0]} publications in the dataframe before removing duplciate titles")
+    logger.info(f"Number of publications before removing duplicate titles: {biblio_df_copy.shape[0]}")
 
     # Convert the years to int (Lens has the year as a float, so I force missing values there to zero)
     biblio_df_copy['year'] = biblio_df_copy['year'].fillna(0).astype(int)
+
+    # Create column pub_date if it doesn't exist (in Scopus for instance)
+    if 'pub_date' not in biblio_df_copy.columns:
+        biblio_df_copy['pub_date'] = np.nan
 
     # Replace the missing pub_date with 1/1/1700
     biblio_df_copy['pub_date_dummy'] = biblio_df_copy['pub_date'].fillna(pd.to_datetime('01-01-1700', format = '%d-%m-%Y'))
@@ -249,16 +361,31 @@ def remove_title_duplicates(biblio_df: pd.DataFrame):
                 biblio_df_copy.loc[biblio_df_copy['year'] == 0, 'pub_date_dummy'].dt.year
 
     # Create new columns for merged values
-    biblio_df_copy['bib_srcs'] = np.nan
+    biblio_df_copy['bib_srcs'] = biblio_df_copy['bib_src']
 
     if 'source' in biblio_df_copy:
         biblio_df_copy['sources'] = np.nan
+    
+    # Dataframe for duplicate titles
+    dup_df = pd.DataFrame()
 
     # Group the rows by the titles and loop over the groups
-    for _, group in biblio_df_copy.groupby('title'):
+    # for _, group in biblio_df_copy.groupby('title'):
+    for idx, (_, group) in enumerate(biblio_df_copy.groupby('title')):
+
+        # Create a new column 'sources' that has all the source titles
+        if 'source' in group.columns:
+            unique_src = group['source'].dropna().str.split(';').explode().str.strip().unique()
+            group['sources'] = '; '.join(unique_src)
+            biblio_df_copy.loc[group.index, 'sources'] = group['source']
+
+        if(idx % 1 == 0):
+            print(f'Group: {idx} ', end = '\r')
 
         if len(group) > 1:
-            # Identify the duplicates within this group
+            dup_df = pd.concat([dup_df, group])
+
+            # Identify the duplicates by index within this group
             duplicates = group.duplicated(subset = 'title', keep = False)
 
             # Sum the values in n_cited
@@ -285,22 +412,16 @@ def remove_title_duplicates(biblio_df: pd.DataFrame):
                 group['kws'] = '; '.join(unique_kws)
                 biblio_df_copy.update(group[['kws']])
 
-            # Create a new column 'bib_srcs' that has all the bib_src strings of the duplicate titles
-            unique_bib_src = group['bib_src'].dropna().str.split(',').explode().str.strip().unique()
-            group['bib_srcs'] = ', '.join(unique_bib_src)
-            biblio_df_copy.update(group[['bib_srcs']])
-
-            # Create a new column 'sources' that has all the source titles
-            if 'source' in group.columns:
-                unique_src = group['source'].str.lower().dropna().str.split(';').explode().str.strip().unique()
-                group['sources'] = '; '.join(unique_src)
-                biblio_df_copy.loc[group.index, 'sources'] = group['source']
-
             # Create a new column 'links' that has all the URLs separate with a space
             if 'links' in group.columns:
                 unique_links = group['links'].dropna().str.split(' ').explode().str.strip().unique()
                 group['links'] = ' '.join(unique_links)
                 biblio_df_copy.update(group[['links']])
+
+            # Create a new column 'bib_srcs' that has all the bib_src strings of the duplicate titles
+            unique_bib_src = group['bib_src'].dropna().str.split(',').explode().str.strip().unique()
+            group['bib_srcs'] = ', '.join(unique_bib_src)
+            biblio_df_copy.update(group[['bib_srcs']])
 
             # Pick an author affiliation string
             if 'author_affils' in group.columns:
@@ -358,7 +479,9 @@ def remove_title_duplicates(biblio_df: pd.DataFrame):
                 # If there are multiple records with the same largest pub_date, first check whether 
                 # there is one that has a source. If there are multiple, then pick one at random
                 if 'source' in group.columns and group['source'].notna().any():
-                    idxmax_group = group.loc[(group['pub_date_dummy'] == group['pub_date_dummy'].max()) & (group['source'].notna())]
+                    # group = group.dropna(subset = ['source'])
+                    # idxmax_group = group.loc[group['pub_date_dummy'] == group['pub_date_dummy'].max()]
+                    idxmax_group = group[group['source'].notna()]
                 else:
                     idxmax_group = group.loc[group['pub_date_dummy'] == group['pub_date_dummy'].max()]
 
@@ -379,18 +502,18 @@ def remove_title_duplicates(biblio_df: pd.DataFrame):
 
     # Change n_cited to int
     if 'n_cited' in biblio_df_copy.columns:
+        biblio_df_copy['n_cited'] = biblio_df_copy['n_cited'].fillna(0)
         biblio_df_copy['n_cited'] = biblio_df_copy['n_cited'].astype(int)
 
-    print("Publications that were removed")
-    print(biblio_df[~biblio_df.index.isin(biblio_df_copy.index)][['title', 'year']])
+    logger.info(f"Number of publications after removing duplicate titles: {biblio_df_copy.shape[0]}")
 
-    return biblio_df_copy
+    return biblio_df_copy, dup_df
 
+counter = 0
 
-def clean_biblio_df(biblio_df: pd.DataFrame,
-                    biblio_type: BiblioType
-                    ) -> pd.DataFrame:
-    
+def clean_biblio_df(biblio_df: pd.DataFrame) -> pd.DataFrame:
+    global counter
+
     logger.info(f'Number of publications in the input biblio_df: {len(biblio_df)}')
 
 
@@ -414,10 +537,15 @@ def clean_biblio_df(biblio_df: pd.DataFrame,
     print(f'Removed {count_procs} records where the title contained "conference", "workshop", or "proceeding"')
 
     # Convert the titles to lower case except for the first word
-    def title_to_lc(s):
-        words = s.split()
-        words = [words[0]] + [w.lower() if w[0].isupper() and len(w) > 1 and w[1].isalpha() and not w[1].isupper() else w for w in words[1:]]
-        return ' '.join(words)
+    def title_to_lc(s: str) -> str:
+        clean_s = re.sub(r'[^A-Za-z]', ' ', s)
+        if clean_s.isupper():
+            final_s = clean_s.capitalize()
+        else:
+            words = s.split()
+            words = [words[0]] + [w.lower() if w[0].isupper() and len(w) > 1 and w[1].isalpha() and not w[1].isupper() else w for w in words[1:]]
+            final_s = ' '.join(words)
+        return final_s
 
     biblio_df['title'] = biblio_df['title'].apply(title_to_lc)
 
@@ -434,7 +562,7 @@ def clean_biblio_df(biblio_df: pd.DataFrame,
     biblio_df['title'] = biblio_df['title'].str.replace(r'\n|\t', ' ', regex = True)
 
     # Remove the word 'abstract' at the start of any title
-    biblio_df['title'] = biblio_df['title'].str.replace(r'^(?i)abstract\s*', '', regex = True)
+    biblio_df['title'] = biblio_df['title'].str.replace(r'(?i)^abstract\s*', '', regex = True)
 
     # Remove words from the beginning of the title that are combinations of at least one number and zero or more special charcters
     biblio_df['title'] = biblio_df['title'].apply(lambda x: re.sub(r'^[\W\d]+(?=\s)', '', x))
@@ -473,8 +601,8 @@ def clean_biblio_df(biblio_df: pd.DataFrame,
     biblio_df['abstract'] = biblio_df['abstract'].str.replace(r'\n|\t', ' ', regex = True)
 
     # Remove the word 'abstract' and 'objective' at the start of any abstract
-    biblio_df['abstract'] = biblio_df['abstract'].str.replace(r'^(?i)abstract\s*', '', regex = True)
-    biblio_df['abstract'] = biblio_df['abstract'].str.replace(r'^(?i)objective(s)?\s*', '', regex = True)
+    biblio_df['abstract'] = biblio_df['abstract'].str.replace(r'(?i)^abstract\s*', '', regex = True)
+    biblio_df['abstract'] = biblio_df['abstract'].str.replace(r'(?i)^objective(s)?\s*', '', regex = True)
 
     # Remove the following common terms from the abstract independently of the case
     remove_strings = ['background', 'objective', 'results', 'conclusions', 'introduction']
@@ -502,32 +630,60 @@ def clean_biblio_df(biblio_df: pd.DataFrame,
           select one at random.
     """
 
-    biblio_df = remove_title_duplicates(biblio_df)
+    biblio_df, _ = remove_title_duplicates(biblio_df)
+    
 
+    '''
+        Generate the new publication IDs
+    '''
+    
+    # Sort the dataset before creating the ids
+    biblio_df = biblio_df.sort_values(by = ['year', 'title'], ascending = [False, True], na_position='last')
 
+    # Generate the record IDs
+    counter = 0
 
+    def generate_id(row):
+        global counter
+        author = ''
+
+        if (row['authors'] != "") and isinstance(row['authors'], str):
+            if "no author name" in row['authors'].lower():
+                author = 'Anonymous'
+            else:
+                author = row['authors'].split()[0].strip()
+        else:
+            author = 'Anonymous'
+
+        id = str(counter).zfill(6) + '_' + author + '_' + str(row['year'])
+        counter += 1
+
+        return id
+
+    biblio_df['id'] = biblio_df.apply(generate_id, axis = 1)
 
 
     """
         Cleaning Scopus/Lens/Dimensions-specific elements
     """
 
-    # Do the biblio_type specific cleaning tasks
-    if biblio_type == BiblioType.SCOPUS:
-        pass
-    elif biblio_type == BiblioType.LENS:
+    # # Do the biblio_type specific cleaning tasks
+    # if biblio_type == BiblioType.SCOPUS:
+    #     pass
+    # elif biblio_type == BiblioType.LENS:
 
-        # Convert year to integer and replace nan with zeros
+    # Convert year to integer and replace nan with zeros
+    if biblio_df['year'].dtype == float:
         biblio_df['year'] = pd.to_numeric(biblio_df['year'], errors = 'coerce')
         biblio_df['year'] = biblio_df['year'].fillna(0)
         biblio_df['year'] = biblio_df['year'].astype(int)
 
-    elif biblio_type == BiblioType.DIMS:
-        pass
-    elif biblio_type == BiblioType.BIBLIO:
-        pass
-    else:
-        raise ValueError("The biblio_type provided is not implemented")
+    # elif biblio_type == BiblioType.DIMS:
+    #     pass
+    # elif biblio_type == BiblioType.BIBLIO:
+    #     pass
+    # else:
+    #     raise ValueError("The biblio_type provided is not implemented")
     
     return biblio_df
 

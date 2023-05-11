@@ -146,9 +146,9 @@ def write_df(biblio_df: pd.DataFrame,
 
 def read_and_merge_csv_files(project: str, 
                              input_dir: str, 
-                             csv_files: Union[str, List[str]] = '', 
+                             csv_files: Union[str, List[str]] = '',
+                             biblio_type: BiblioType = BiblioType.UNDEFINED,
                              n_rows: Optional[int] = None,
-                             is_dimensions: bool = False
                              ) -> pd.DataFrame:
     
     root_dir = get_root_dir()
@@ -158,10 +158,13 @@ def read_and_merge_csv_files(project: str,
     if not _input_dir.exists():
         raise ValueError(f"The folder {_input_dir} does not exist")
     
+    if biblio_type == BiblioType.UNDEFINED:
+        raise ValueError(f"The parameter biblio_type needs to be set to: SCOPUS, LENS, DIMS, OR BIBLIO")
+    
     # check_output_file(root_dir, project, output_file, output_dir)
     
     # Skip the first row in a Dimensions CSV file, which contains details about the search
-    skip_rows = 1 if is_dimensions else 0
+    skip_rows = 1 if biblio_type == BiblioType.DIMS else 0
 
     # Convert single file name to list
     if isinstance(csv_files, str):
@@ -188,15 +191,22 @@ def read_and_merge_csv_files(project: str,
     # Merge all dataframes into one
     biblio_df = pd.concat(all_df, ignore_index = True)
 
-    logger.info(f"Total number of publications in the dataframe: {len(biblio_df)}")
+    # Apply cutoff again in case multiple files were read
+    if isinstance(n_rows, int):
+        biblio_df = biblio_df.head(n_rows)
 
-    # if output_file and output_dir:
-    #     logger.info(f"Writing biblio_df to file {output_file}")
-    #     output_path = Path(root_dir, 'data', project, output_dir, output_file)
-        
-    #     if Path(output_file).suffix == '.csv':
-    #         biblio_df.to_csv(output_path, index = False)
-    #     elif Path(output_file).suffix == '.xlsx':
-    #         biblio_df.to_excel(output_path, index = False)
+    # Create the bib_src column and set to the biblio_type
+    if biblio_type == BiblioType.SCOPUS:
+        biblio_df['bib_src'] = 'scopus'
+    elif biblio_type == BiblioType.LENS:
+        biblio_df['bib_src'] = 'lens'
+    elif biblio_type == BiblioType.DIMS:
+        biblio_df['bib_src'] = 'dims'
+    elif biblio_type == BiblioType.BIBLIO:
+        biblio_df['bib_src'] = 'biblio'
+    else:
+        raise ValueError(f"The parameter biblio_type needs to be set to: SCOPUS, LENS, DIMS, OR BIBLIO")
+
+    logger.info(f"Total number of publications in the dataframe: {len(biblio_df)}")
 
     return biblio_df

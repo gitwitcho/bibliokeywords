@@ -42,7 +42,7 @@ def test_remove_title_duplicates():
                        'abstract': ['Abstract A', 'Abstract B'],
                        'pub_date': [datetime(2021, 1, 1), datetime(2022, 1, 1)],
                        'bib_srcs': ['scopus', 'pubmed']})
-    output_df = remove_title_duplicates(df)
+    output_df, _ = remove_title_duplicates(df)
     expected_df.reset_index(drop = True, inplace = True)
     output_df.reset_index(drop = True, inplace = True)
     assert output_df.equals(expected_df)
@@ -59,7 +59,7 @@ def test_remove_title_duplicates():
                                 'abstract': ['Abstract A2'], 
                                 'pub_date': [datetime(2022, 10, 4)],
                                 'bib_srcs':['scopus, pubmed']})
-    output_df = remove_title_duplicates(df)
+    output_df, _ = remove_title_duplicates(df)
     expected_df.reset_index(drop = True, inplace = True)
     output_df.reset_index(drop = True, inplace = True)
     assert output_df.equals(expected_df)
@@ -76,7 +76,7 @@ def test_remove_title_duplicates():
                                 'abstract': ['Abstract A3'],
                                 'pub_date': [datetime(2021, 1, 1)],
                                 'bib_srcs':['pubmed, scopus']})
-    output_df = remove_title_duplicates(df)
+    output_df, _ = remove_title_duplicates(df)
     expected_df.reset_index(drop = True, inplace = True)
     output_df.reset_index(drop = True, inplace = True)
     assert output_df.equals(expected_df)
@@ -93,7 +93,7 @@ def test_remove_title_duplicates():
                                 'abstract': ['Abstract A4'],
                                 'pub_date': [datetime(2022, 1, 1)],
                                 'bib_srcs':['scopus']})
-    output_df = remove_title_duplicates(df)
+    output_df, _ = remove_title_duplicates(df)
     expected_df.reset_index(drop = True, inplace = True)
     output_df.reset_index(drop = True, inplace = True)
     assert output_df.equals(expected_df)
@@ -110,7 +110,7 @@ def test_remove_title_duplicates():
                                 'abstract': ['Abstract A5'],
                                 'pub_date': [pd.NaT],
                                 'bib_srcs':['dims, lens']})
-    output_df = remove_title_duplicates(df)
+    output_df, _ = remove_title_duplicates(df)
     expected_df.reset_index(drop = True, inplace = True)
     output_df.reset_index(drop = True, inplace = True)
     assert output_df.equals(expected_df)
@@ -128,7 +128,7 @@ def test_remove_title_duplicates():
                                 'abstract': ['Abstract A6'],
                                 'pub_date': [datetime(2019, 12, 1)],
                                 'bib_srcs':['lens, dims']})
-    output_df = remove_title_duplicates(df)
+    output_df, _ = remove_title_duplicates(df)
     expected_df.reset_index(drop = True, inplace = True)
     output_df.reset_index(drop = True, inplace = True)
     assert output_df.equals(expected_df)
@@ -146,7 +146,7 @@ def test_remove_title_duplicates():
                                 'abstract': [np.nan],
                                 'pub_date': [datetime(2019, 12, 1)],
                                 'bib_srcs':['lens, dims']})
-    output_df = remove_title_duplicates(df)
+    output_df, _ = remove_title_duplicates(df)
     expected_df.reset_index(drop = True, inplace = True)
     output_df.reset_index(drop = True, inplace = True)
     assert output_df.equals(expected_df)
@@ -163,7 +163,7 @@ def test_remove_title_duplicates():
                                 'abstract': ['Abstract A8'],
                                 'pub_date': [datetime(2016, 12, 1)],
                                 'bib_srcs':['lens']})
-    output_df = remove_title_duplicates(df)
+    output_df, _ = remove_title_duplicates(df)
     expected_df.reset_index(drop = True, inplace = True)
     output_df.reset_index(drop = True, inplace = True)
     assert output_df.equals(expected_df)
@@ -180,7 +180,7 @@ def test_remove_title_duplicates():
                                 'abstract': [],
                                 'pub_date': [],
                                 'bib_srcs':[]})
-    output_df = remove_title_duplicates(df)
+    output_df, _ = remove_title_duplicates(df)
     expected_df.reset_index(drop = True, inplace = True)
     output_df.reset_index(drop = True, inplace = True)
     assert output_df.empty
@@ -197,7 +197,7 @@ def test_remove_title_duplicates():
                                 'abstract': ['Abstract A10'],
                                 'pub_date': [datetime(2021, 1, 1)],
                                 'bib_srcs':['scopus']})
-    output_df = remove_title_duplicates(df)
+    output_df, _ = remove_title_duplicates(df)
     expected_df.reset_index(drop = True, inplace = True)
     output_df.reset_index(drop = True, inplace = True)
     assert output_df.equals(expected_df)
@@ -225,7 +225,7 @@ def test_remove_title_duplicates():
                                 'source': ['Journal of Philosophy'],
                                 'bib_srcs':['lens, dims'],
                                 'sources': ['Journal of Philosophy']})
-    output_df = remove_title_duplicates(df)
+    output_df, _ = remove_title_duplicates(df)
     expected_df.reset_index(drop = True, inplace = True)
     output_df.reset_index(drop = True, inplace = True)
     assert output_df.equals(expected_df)
@@ -254,7 +254,7 @@ def test_remove_title_duplicates():
                                 'links': ['A B C D E F G H I'],
                                 'author_affils': ['AFF1'],
                                 'bib_srcs':['scopus, lens']})
-    output_df = remove_title_duplicates(df)
+    output_df, _ = remove_title_duplicates(df)
     expected_df.reset_index(drop = True, inplace = True)
     output_df.reset_index(drop = True, inplace = True)
     assert output_df.equals(expected_df)
