@@ -15,6 +15,9 @@ class MyLogger:
         if level in levels:
             self.logger.setLevel(level)
 
+    def get_level(self):
+        return self.logger.getEffectiveLevel()
+
     def _add_handler(self):
         sh = logging.StreamHandler()
         sh.setFormatter(logging.Formatter('%(asctime)s - %(name)s - %(message)s'))
