@@ -699,6 +699,13 @@ def generate_pandas_query_string(query_str: str) -> str:
     split_at = r"()|&~"
     pad = r"|&~"
     split_at_escaped = re.escape(split_at)
+
+    if re.search(r'\[[^\]]*~[^\]]*\]', query_str):
+        raise ValueError(f"The not operator '~' is not allowed inside square brackets '[...]'")
+    
+    if re.search(r'in\*\s*~', query_str):
+        raise ValueError(f"Applying the not operator '~' on the columns is not allowed")
+    
     pattern = fr"(?=[{split_at_escaped}])|(?<=[{split_at_escaped}])"
     query_parts = re.split(pattern, query_str)
     query_parts = [item.strip() for item in query_parts if item.strip()]
@@ -710,50 +717,70 @@ def generate_pandas_query_string(query_str: str) -> str:
         if 'in*' in query_part:
             in_parts = query_part.split('in*')
             search_str = in_parts[0].strip()
-            col_str = in_parts[1].strip()
-            match_and = re.match(r"^\{.*\}$", search_str)
+            col_str = in_parts[1].strip()                
+
+            match_and = re.match(r"^\[\[.*\]\]$", search_str)
             match_or = re.match(r"^\[.*\]$", search_str)
             match = match_and if match_and else (match_or if match_or else False)
+            match_col = re.match(r"^\[.*\]$", col_str)
 
-
-            # FIXME: The match_and regex is very different: pattern = f"^(?=.*{pattern_1})(?=.*{pattern_2})(?=.*{pattern_3})"
+            if match_col:   # multiple columns to search in
+                matched_col_lst = [string.strip() for string in match_col.group().replace('[', '').replace(']', '').split(',')]
+            else:
+                matched_col_lst = [col_str]
 
             if match:   # multiple search strings
-                matched_string = match.group().strip().replace('[', '').replace(']', '').replace('{', '').replace('}', '')
+                matched_string = match.group().strip().replace('[', '').replace(']', '')
 
                 # if ... multiple columns in which to search
 
                 # else ...
-                search_str_lst = matched_string.split(',')
-                subst_query = f"{col_str}.str.contains(r'^"
-                first_search_str = True
+                search_str_lst = [string.strip() for string in matched_string.split(',')]
+                first_col_str = True
+                subst_query = ""
 
-                for search_str in search_str_lst:
-                    if re.match(r"^['\"].*['\"]$", search_str):   # single search string, full word match enforced
-                        search_str = search_str.strip().replace("'", "").replace('"', "")
-                        if match_and:
-                            subst_query += f"(?=.*\\b{search_str}\\b)"
-                        else:
-                            subst_query += f"{'|' if not first_search_str else ''}\\b{search_str}\\b"
-                        first_search_str = False
-                    else:   # single search string, partial word match allowed
-                        search_str = search_str.strip()
-                        if match_and:
-                            subst_query += f"(?=.*{search_str})"
-                        else:
-                            subst_query += f"{'|' if not first_search_str else ''}{search_str}"
-                        first_search_str = False
+                for col_str in matched_col_lst:
+                    subst_query += f"{' | ' if not first_col_str else ''}({col_str}.str.contains(r'"
+                    first_search_str = True
 
-                subst_query += f"', case = False, regex = True)"
+                    for search_str in search_str_lst:
+                        if re.match(r"^['\"].*['\"]$", search_str):   # single search string, full word match enforced
+                            search_str = search_str.strip().replace("'", "").replace('"', "")
+                            if match_and:
+                                subst_query += f"{'^' if not first_search_str else ''}(?=.*\\b{search_str}\\b)"
+                            else:
+                                subst_query += f"{'|' if not first_search_str else ''}\\b{search_str}\\b"
+                            first_search_str = False
+                        else:   # single search string, partial word match allowed
+                            search_str = search_str.strip()
+                            if match_and:
+                                subst_query += f"{'^' if not first_search_str else ''}(?=.*{search_str})"
+                            else:
+                                subst_query += f"{'|' if not first_search_str else ''}{search_str}"
+                            first_search_str = False
+
+                    subst_query += f"', case = False, regex = True))"
+                    first_col_str = False
+
                 modified_query_parts.append(subst_query)
             else:
-                if re.match(r"^['\"].*['\"]$", search_str):   # single search string, full word match enforced
-                    search_str = search_str.strip().replace("'", "").replace('"', "")
-                    subst_query = f"{col_str}.str.contains(r'\\b{search_str}\\b', case = False, regex = True)"
-                    modified_query_parts.append(subst_query)
-                else:   # single search string, partial word match allowed
-                    subst_query = f"{col_str}.str.contains('{search_str}', case = False, regex = True)"
-                    modified_query_parts.append(subst_query)
+                first_col_str = True
+                subst_query = ""
+
+                for col_str in matched_col_lst:
+                    # subst_query += f"{' | ' if not first_col_str else ''}({col_str}.str.contains(r'^"
+                    subst_query += f"{' | ' if not first_col_str else '('}"
+
+                    if re.match(r"^['\"].*['\"]$", search_str):   # single search string, full word match enforced
+                        search_str = search_str.strip().replace("'", "").replace('"', "")
+                        subst_query += f"{col_str}.str.contains(r'\\b{search_str}\\b', case = False, regex = True)"
+                    else:   # single search string, partial word match allowed
+                        subst_query += f"{col_str}.str.contains('{search_str}', case = False, regex = True)"
+                    
+                    first_col_str = False
+
+                subst_query += f")"
+                modified_query_parts.append(subst_query)
         else:
             modified_query_parts.append(query_part)
 
@@ -784,15 +811,14 @@ def filter_biblio_df(biblio_df: pd.DataFrame,
         The filtered DataFrame.
     """
 
-    # Check that the query string is valid and that any column names it refers to exist
+    # Build pandas query string
+    filter_pandas_query = generate_pandas_query_string(query_str = query_str)
+
+    # Check that the query string is valid
     try:
-        filtered_df = biblio_df.query(query_str)
+        filtered_df = biblio_df.query(filter_pandas_query)
     except (SyntaxError, ValueError) as e:
         raise ValueError("Invalid query string") from e
-
-    for col in filtered_df.columns:
-        if col not in biblio_df.columns:
-            raise ValueError(f"Column '{col}' does not exist in DataFrame")
 
     # Return the filtered DataFrame
     return filtered_df
@@ -971,8 +997,7 @@ def excel_highlights_builder(biblio_highlights_df: pd.DataFrame,
             j = tak_excel_df.columns.get_loc(col)
 
             if col in excel_highlighted_cols:
-                # FIXME:
-                rs = CellRichText(tak_excel_df.iloc[i, j])
+                rs = CellRichText(tak_excel_df.iloc[i, j])  # type: ignore - not sure how to avoid the Pylance typing warning
             elif col in numeric_cols:
                 # rs = str(tak_excel_df.iloc[i, j])
                 rs = tak_excel_df.iloc[i, j]

@@ -48,16 +48,24 @@ excel_params = {
     'freeze_panes': 'A2'
 }
 
-filter_query = "(risk in* title) & (year == 2014)"
-filter_query = "systemic in* title"
-filter_query = "public in* title | extreme in* abstract"
-filter_query = "013 in* lens_id"
-filter_query = "'exists' in* abstract"
-filter_query = "['modules', extreme] in* title"
-filter_query = "{systemic, 'equi'} in* title"
+# Note: the tilde character is not allowed inside squarte brackets
+# filter_query = "(risk in* title) & (year == 2014)"
+# filter_query = "systemic in* title"
+# filter_query = "public in* title | extreme in* abstract"
+# filter_query = "013 in* lens_id"
+# filter_query = "'exists' in* abstract"
+# filter_query = "['modules', extreme] in* title"
+# filter_query = "extreme in* [title, abstract]"
+# filter_query = "[[systemic, 'equity']] in* title"
+# filter_query = "[[procyc, 'module']] in* [title, abstract]"
 # filter_query = "['modules', extreme] in* [title, abstract]"
+# filter_query = "~systemic in* title"
+# filter_query = "~(~public in* title | extreme in* abstract)"
+# filter_query = "~'exists' in* abstract"
+# filter_query = "~['modules', extreme] in* title"
+filter_query = "~[[systemic risk, 'equity']] in* title"
 
-filter_pandas_query = generate_pandas_query_string(filter_query)
+# filter_pandas_query = generate_pandas_query_string(filter_query)
 
 biblio_df = read_and_merge_csv_files(project = project, 
                                     input_dir = 'raw/lens',
@@ -68,16 +76,8 @@ biblio_df = reshape_cols_biblio_df(biblio_df = biblio_df, reshape_base = Reshape
 biblio_df = normalise_biblio_entities(biblio_df = biblio_df)
 biblio_df = clean_biblio_df(biblio_df = biblio_df)
 
-biblio_df = biblio_df.query(filter_pandas_query)
-
-print(biblio_df)
-
-sys.exit()
-
-print(filter_biblio_df(biblio_df = biblio_df,
-                       query_str = filter_query))
-
-sys.exit()
+biblio_df = filter_biblio_df(biblio_df = biblio_df,
+                             query_str = filter_query)
 
 _, excel_wb = highlight_biblio_df(biblio_df = biblio_df,
                                 highlight_params = highlight_params,

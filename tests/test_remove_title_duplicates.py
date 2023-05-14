@@ -9,23 +9,23 @@ from datetime import datetime
 from transform import remove_title_duplicates
 
 
-def compare_dataframes(df1, df2):
-    """
-    Compares two DataFrames element by element.
+# def compare_dataframes(df1, df2):
+#     """
+#     Compares two DataFrames element by element.
 
-    Returns True if the DataFrames are equal, False otherwise.
-    """
-    # Check if the shape and column names are the same
-    if df1.shape != df2.shape or set(df1.columns) != set(df2.columns):
-        return False
+#     Returns True if the DataFrames are equal, False otherwise.
+#     """
+#     # Check if the shape and column names are the same
+#     if df1.shape != df2.shape or set(df1.columns) != set(df2.columns):
+#         return False
 
-    # Check if each element in the DataFrames is equal
-    for column in df1.columns:
-        if not np.array_equal(df1[column], df2[column]):
-            return False
+#     # Check if each element in the DataFrames is equal
+#     for column in df1.columns:
+#         if not np.array_equal(df1[column], df2[column]):
+#             return False
 
-    # If all elements are equal, the DataFrames are equal
-    return True
+#     # If all elements are equal, the DataFrames are equal
+#     return True
 
 
 def test_remove_title_duplicates():
@@ -259,4 +259,4 @@ def test_remove_title_duplicates():
     output_df.reset_index(drop = True, inplace = True)
     assert output_df.equals(expected_df)
 
-test_remove_title_duplicates()
+# test_remove_title_duplicates()
