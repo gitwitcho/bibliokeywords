@@ -640,6 +640,13 @@ def clean_biblio_df(biblio_df: pd.DataFrame) -> pd.DataFrame:
     biblio_df, _ = remove_title_duplicates(biblio_df)
     
 
+    # Convert year to integer and replace nan with zeros (in Lens, year is a float)
+    if 'year' in biblio_df.columns and biblio_df['year'].dtype == float:
+        biblio_df['year'] = pd.to_numeric(biblio_df['year'], errors = 'coerce')
+        biblio_df['year'] = biblio_df['year'].fillna(0)
+        biblio_df['year'] = biblio_df['year'].astype(int)
+
+
     '''
         Generate the new publication IDs
     '''
@@ -666,31 +673,9 @@ def clean_biblio_df(biblio_df: pd.DataFrame) -> pd.DataFrame:
         counter += 1
 
         return id
-
+    
+    biblio_df.reset_index(drop = True, inplace = True)
     biblio_df['id'] = biblio_df.apply(generate_id, axis = 1)
-
-
-    """
-        Cleaning Scopus/Lens/Dimensions-specific elements
-    """
-
-    # # Do the biblio_type specific cleaning tasks
-    # if biblio_type == BiblioType.SCOPUS:
-    #     pass
-    # elif biblio_type == BiblioType.LENS:
-
-    # Convert year to integer and replace nan with zeros
-    if biblio_df['year'].dtype == float:
-        biblio_df['year'] = pd.to_numeric(biblio_df['year'], errors = 'coerce')
-        biblio_df['year'] = biblio_df['year'].fillna(0)
-        biblio_df['year'] = biblio_df['year'].astype(int)
-
-    # elif biblio_type == BiblioType.DIMS:
-    #     pass
-    # elif biblio_type == BiblioType.BIBLIO:
-    #     pass
-    # else:
-    #     raise ValueError("The biblio_type provided is not implemented")
     
     return biblio_df
 
@@ -787,6 +772,7 @@ def generate_pandas_query_string(query_str: str) -> str:
     modified_query_parts = [s if s not in pad else f" {s} " for s in modified_query_parts]
 
     return ''.join(modified_query_parts)
+
 
 def filter_biblio_df(biblio_df: pd.DataFrame, 
                      query_str: str

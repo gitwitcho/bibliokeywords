@@ -7,6 +7,10 @@ import sys
 import nltk
 nltk.download('wordnet')
 
+import spacy
+# conda install -c conda-forge spacy-model-en_core_web_sm
+nlp = spacy.load("en_core_web_sm")
+
 from collections import Counter
 from typing import Tuple, Dict, List
 from textblob import TextBlob
@@ -17,72 +21,10 @@ from collections import Counter
 from textblob import TextBlob
 from textblob import Word
 
-from textblob.wordnet import NOUN, ADJ
+# from textblob.wordnet import NOUN, ADJ
 
 
-def DEPREC_compress_synonyms(strings_lst: List,
-                      string_counts_dict: Dict):
-
-    if not all(string in string_counts_dict for string in strings_lst):
-        raise ValueError(f"The strings in strings_lst need to correspond to a key in string_counts_dict")
-    
-    syn_dict = {}
-
-    for string in strings_lst:
-        # Find synonyms of string
-        synonyms = Word(string).synsets
-
-        # List of the synonyms and the string
-        combined_set = list(set([string] + [syn.lemma_names()[0] for syn in synonyms]))      # type: ignore - Pylance: "cached_property" is not iterable
-
-        # Find a/the string/synonym with the highest count in the dictionary
-        max_value_string = max(combined_set, key = lambda string: string_counts_dict.get(string, 0))
-
-        # Get the strings with the highest count in string_counts
-        highest_value_strings = [string for string in combined_set if string_counts_dict.get(string, 0) == string_counts_dict[max_value_string]]
-
-        # Choose one string at random from the highest value strings
-        chosen_string = random.choice(highest_value_strings)
-
-        # Add the key-value pairs 'synonym: chosen_string' to the synonym dictionary.
-        # TODO: Currently, if the key exists, it will not add the alternative synonym 
-        # to the dictionary. For instance if the words 'luck' and 'risk' are in string_counts_dicts,
-        # then both might have 'hazard' among their synonyms. If 'luck' is processed
-        # first, then syn_dict will have an entry 'hazard: luck'. When 'risk' is then
-        # processed, the key-value pair 'hazard: risk' cannot be added to syn_dict since
-        # the key 'hazard' already exists. What can be done? Check which of both terms
-        # ('risk' and 'luck') has the highest count in string_counts_dict and use that 
-        # term as the synonym in syn_dict. 
-        syn_dict.update({new_key: chosen_string for new_key in combined_set if new_key != chosen_string and new_key not in syn_dict})
-
-
-    # Replace synonym strings in strings_count with their 'root' synonym and
-    # sum the corresponding counts
-    # FIXME: If a word has different meanings (a bank for instance), then not all its 
-    # synonyms are meaningful. If the word 'bank' refers to a financial institution, 
-    # then the code below will add them nonetheless to the dictionary. 
-    for key, value in syn_dict.items():     # key: synonyms, value: chosen 'root' synonym
-        if key in string_counts_dict:
-            if value in string_counts_dict:
-                string_counts_dict[value] += string_counts_dict.get(key, 0)
-            else:
-                string_counts_dict[value] = string_counts_dict.get(key, 0)
-            
-            string_counts_dict.pop(key, None)
-
-    return string_counts_dict
-
-# # Example usage
-# strings_lst = ['happy', 'content']
-# string_dict = {'happy': 6,
-#                'content': 10,
-#                'joyful': 6,
-#                'felicitous': 2}
-# result = compress_synonyms(strings_lst, string_dict)
-# print(result)
-
-
-def synonymise_terms(string_counts_dict: Dict) -> Dict:
+def synonymise_terms_dict(string_counts_dict: Dict) -> Dict:
 
     syn_dict = {}
     terms = list(string_counts_dict.keys())
@@ -133,17 +75,38 @@ def synonymise_terms(string_counts_dict: Dict) -> Dict:
     return string_counts_dict
 
 
-def singularize_term(terms: List):
+# def synonymise_terms(terms: List[str]) -> List[str]:
+
+#     terms_dict = {string: 0 for string in terms}
+#     synonymised_terms_list = list(synonymise_terms_dict(terms_dict).keys())
+
+#     return synonymised_terms_list
+
+
+def singularize_terms(terms: List):
+    '''
+        Only singularise the last word in a term like 'physics based'
+    '''
     singularised_terms = []
+    endings = ['ics']
 
     for term in terms:
-        term = ' '.join(TextBlob(term).words.singularize()) # type: ignore - Pylance: Cannot access member "singularize" for type "cached_property"
-        singularised_terms += [term]
+        last_word = term.split(' ')[-1]
+
+        # Check whether the word is singular even if it ends in 's'
+        if nlp(last_word)[0].tag_ in {"NNS", "NNPS"} and not any(last_word.endswith(ending) for ending in endings):
+            last_word = ''.join(list(TextBlob(last_word).words.singularize()))    # type: ignore - Pylance: Cannot access member "singularize" for type "cached_property"
+            term_lst = term.split(' ')       
+            term_lst[-1] = last_word
+            term_str = ' '.join(term_lst)
+            singularised_terms += [term_str]
+        else:
+            singularised_terms += [term]
 
     return singularised_terms
 
 
-def stem_terms(string_counts_dict: Dict) -> Dict:
+def stem_terms_dict(string_counts_dict: Dict) -> Dict:
     terms = list(string_counts_dict.keys())
 
     for key in terms:
@@ -160,7 +123,15 @@ def stem_terms(string_counts_dict: Dict) -> Dict:
     return string_counts_dict
 
 
-def create_co_term_df(term_se: pd.Series,
+def stem_terms(terms: List[str]) -> List[str]:
+
+    terms_dict = {string: 0 for string in terms}
+    stemmed_terms_list = list(set(stem_terms_dict(terms_dict).keys()))
+
+    return stemmed_terms_list
+
+
+def create_co_term_graph(term_se: pd.Series,
                       min_count: int = 0,
                       singularise: bool = True,
                       synonymise: bool = False,
@@ -174,7 +145,7 @@ def create_co_term_df(term_se: pd.Series,
 
     # Singularise the terms in term_df
     if singularise:
-        term_se = term_se.apply(singularize_term)
+        term_se = term_se.apply(singularize_terms)
 
     # Create a set of all unique strings in term_df
     unique_strings = term_se.explode().unique()
@@ -195,10 +166,10 @@ def create_co_term_df(term_se: pd.Series,
         string_counts_dict = {key: value for key, value in string_counts_dict.items() if value >= min_count}
 
     if synonymise:
-        string_counts_dict = synonymise_terms(string_counts_dict = string_counts_dict)
+        string_counts_dict = synonymise_terms_dict(string_counts_dict = string_counts_dict)
 
     if stem:
-        string_counts_dict = stem_terms(string_counts_dict = string_counts_dict)
+        string_counts_dict = stem_terms_dict(string_counts_dict = string_counts_dict)
 
     # Include strings that occur with frequency min_count or more often, unless 
     # filtered_strings = [string for string, count in string_counts_dict.items() if count >= min_count or min_count < 0]

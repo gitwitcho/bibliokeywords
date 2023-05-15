@@ -1,5 +1,5 @@
 import sys
-# import networkx as nx
+
 import matplotlib.pyplot as plt
 import igraph as ig
 
@@ -11,8 +11,6 @@ from transform import *
 from co_term_occurrence import *
 
 project = 'systemic_risk'
-
-
 
 exclude_terms = ['human', 'male', 'female']
 
@@ -27,13 +25,15 @@ biblio_df = reshape_cols_biblio_df(biblio_df = biblio_df, reshape_base = Reshape
 biblio_df = normalise_biblio_entities(biblio_df = biblio_df)
 biblio_df = clean_biblio_df(biblio_df = biblio_df)
 
-# TODO: Implement negative min_count for number of keywords to include
-# TODO: Stemming, plurals
-graph, pair_counter = create_co_term_df(biblio_df['kws'], 
-                                        min_count = 18,
-                                        singularise = True,
-                                        synonymise = True,
-                                        stem = True)    # TODO: check whether this couldn't be applied to the number of pairs
+# TODO: Implement negative min_count for keyword pair frequency threshold
+# TODO: Remove the graph.simplify() in create_co_term_graph, remove the
+# paur_counter, and instead add the edge count to a new attribute 'count'
+# to the edges, removing the code below that does that.
+graph, pair_counter = create_co_term_graph(biblio_df['kws'], 
+                                           min_count = 18,
+                                           singularise = True,
+                                           synonymise = True,
+                                           stem = True)
 
 # Convert pair_counter to a DataFrame
 pairs_df = pd.DataFrame.from_dict(pair_counter, orient='index', columns=['Count'])
@@ -59,14 +59,4 @@ ig.plot(graph,
 
 plt.show()
 
-
-# # Draw the graph
-# fig, ax = plt.subplots(figsize=(5,5))
-# ig.plot(graph, target = ax)
-# # nx.draw_networkx(graph, with_labels = True, font_weight = 'bold')
-
-# # Show the plot
-# plt.show()
-
-graph.save(root_dir / 'data' / project / 'results' / 'test_graph.gml')
-# nx.write_gexf(graph, root_dir / 'data' / project / 'results' / 'test_graph.gexf')
+graph.write(root_dir / 'data' / project / 'results' / 'test_graph.graphml', format = 'graphml')

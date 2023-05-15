@@ -272,6 +272,15 @@ reshape_strucs = {Reshape.SCOPUS_ALL.value: reshape_struc_scopus_all,
                   Reshape.DIMS_FULL.value: reshape_struc_dims_full,
                   Reshape.DIMS_COMPACT.value: reshape_struc_dims_compact}
 
+
+# If search_terms is directly copied from Scopus, Lens, or Dimensions, then remove
+# the following strings before extracting the search terms. If the search_term
+# contains additional strings not in this list, they will be added 
+scopus_strings_remove = ['(',')','TITLE-ABS-KEY', 'TITLE', 'TITLE-ABS', 'KEY', 'NOT']
+lens_strings_remove = ['(',')','title:', 'abstract:', 'keyword:', 'not']
+dims_strings_remove = ['(', ')', 'not']
+
+
 # If verbose == True, set the logging level so that info messages are printed
 logger = MyLogger("WARNING")
 if verbose: logger.set_level("DEBUG")

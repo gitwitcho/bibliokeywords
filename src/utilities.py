@@ -125,6 +125,8 @@ def write_df(biblio_df: pd.DataFrame,
 
     Returns:
         None
+    
+    TODO: Add timestamping
     """
     root_dir = get_root_dir()
 
