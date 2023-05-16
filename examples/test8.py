@@ -6,9 +6,9 @@ from pathlib import Path
 from utilities import *
 from config import *
 from transform import *
-from search_term_matches import *
+from search_terms import *
 
-project = 'PINNs'
+data_project = 'PINNs'
 
 cols= ['title', 'abstract', 'kws']
 full_matches = ['fem', 'ann', 'gan']
@@ -18,16 +18,16 @@ search_terms = '''
 
 root_dir = Path(__file__).resolve().parents[1]
 
-biblio_df = read_and_merge_csv_files(project = project, 
+biblio_df = read_and_merge_csv_files(project = data_project, 
                                     input_dir = 'raw/scopus',
                                     biblio_type = BiblioType.SCOPUS,
                                     n_rows = 10)
 
-biblio_df = reshape_cols_biblio_df(biblio_df = biblio_df, reshape_base = Reshape.SCOPUS_COMPACT)
+biblio_df = rename_and_retain_cols_biblio_df(biblio_df = biblio_df, reshape_base = Reshape.SCOPUS_COMPACT)
 biblio_df = normalise_biblio_entities(biblio_df = biblio_df)
 biblio_df = clean_biblio_df(biblio_df = biblio_df)
 
-biblio_df = add_col_search_term_matches(biblio_df = biblio_df,
+biblio_df = add_search_term_matches_as_col(biblio_df = biblio_df,
                                        cols = cols,
                                        search_terms = search_terms,
                                        full_matches = full_matches,

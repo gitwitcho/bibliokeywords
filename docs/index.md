@@ -1,4 +1,4 @@
-# Welcome to BiblioTopics
+# Welcome to BiblioKeywords
 
 For full documentation visit [mkdocs.org](https://www.mkdocs.org).
 

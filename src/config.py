@@ -3,8 +3,14 @@ from enum import Enum
 
 verbose = True
 
+project_root_markers = ['requirements.txt', '.gitignore', 'README.md']
+
 data_root_dir = 'data'
 model_root_dir = 'models'
+"""
+    str (int): Module level variable documented inline.
+"""
+
 
 class BiblioType(Enum):
     SCOPUS = 1

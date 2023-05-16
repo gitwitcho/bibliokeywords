@@ -14,28 +14,91 @@ from openpyxl.cell.rich_text import TextBlock, CellRichText
 from config import *
 from utilities import *
 
-def reshape_cols_biblio_df(biblio_df: pd.DataFrame,
-                      reshape_base: Optional[Reshape] = None,
-                      reshape_filter: Optional[Union[Dict,List]] = None,
-                      keep_bib_src: bool = True,
-                      ) -> pd.DataFrame:
+def rename_and_retain_cols_biblio_df(biblio_df: pd.DataFrame,
+                                     reshape_base: Optional[Reshape] = None,
+                                     reshape_filter: Optional[Union[Dict,List]] = None,
+                                     keep_bib_src: bool = True
+                                     ) -> pd.DataFrame:
+    """
+    Rename and retain columns in the bibliographic dataset biblio_df based on reshape_base with its
+    preset criteria or reshape_filter, where you define what column to retain and how to rename them.
     
-    root_dir = get_root_dir()
+    The reshape_base parameter allows you to specify preset criteria for renaming and retaining the columns 
+    in the bibliographic DataFrame. The available values for reshape_base are defined in the 
+    config.py file. For each bibliographic database that can be processed (e.g.Scopus, Lens, 
+    Dimensions), there are three levels of detail that can be retained: All, Full, and Compact.
+
+    - The "All" level retains all the columns of the raw dataset from the respective bibliographic database.
+    - The "Full" level removes certain columns from biblio_df that might not be needed for the analysis.
+    - The "Compact" level is similar to "Full" and further reduces the number of columns in biblio_df.
+    
+    Alternatively, you can use the reshape_filter parameter to specify a list of column names in biblio_df 
+    that you want to retain. This allows you to manually select the specific columns you need for further analysis.
+
+    By using either reshape_base or reshape_filter, you can customize the column selection and reshaping process 
+    of the bibliographic DataFrame based on your requirements.
+
+
+    Args:
+        biblio_df (pd.DataFrame):
+            The input bibliographic DataFrame.
+        reshape_base (Optional[Reshape]):
+            The base reshape criteria. If provided, only the columns specified in the
+            `reshape_base` criteria will be retained and renamed according to the predefined
+            reshape structures defined in `reshape_strucs`. Default is None.
+        reshape_filter (Optional[Union[Dict, List]]):
+            The additional reshape criteria for filtering specific columns.
+            - If `reshape_filter` is a list, only the columns present in the list will be retained.
+            - If `reshape_filter` is a dictionary, the keys represent the columns to be retained,
+              and the values represent the new column names. Default is None.
+        keep_bib_src (bool):
+            Flag indicating whether to retain the 'bib_src' column in the output DataFrame. Otherwise
+            it will be removed through the reshaping, which is not what we typically want.
+            If True, the 'bib_src' column is preserved. If False, it is removed. Default is True.
+
+    Returns:
+        pd.DataFrame:
+            The reshaped bibliographic DataFrame.
+
+    Raises:
+        ValueError:
+            - If any of the columns specified in `reshape_base` are not found in the `biblio_df`.
+            - If any of the columns specified in `reshape_filter` are not found in the `biblio_df`.
+    """
 
     if reshape_base:
         if not all(col in biblio_df.columns for col in reshape_strucs[reshape_base.value].keys()):
             raise ValueError(f"One or more columns not found in biblio_df: {reshape_strucs[reshape_base.value]}")
-        biblio_df = biblio_df[list(reshape_strucs[reshape_base.value].keys())].rename(columns = reshape_strucs[reshape_base.value])
+        
+        reshape_columns = list(reshape_strucs[reshape_base.value].keys())
+
+        if ('bib_src' in biblio_df.columns) and ('bib_src' not in reshape_columns):
+            reshape_columns.append('bib_src')
+
+        biblio_df = biblio_df[reshape_columns].rename(columns = reshape_strucs[reshape_base.value])
 
     if reshape_filter:
+
         if isinstance(reshape_filter, List):
             if not all(col in biblio_df.columns for col in reshape_filter):
                 raise ValueError(f"One or more columns not found in biblio_df: {reshape_filter}")
+            
+            if ('bib_src' in biblio_df.columns) and ('bib_src' not in reshape_filter):
+                reshape_filter.append('bib_src')
+
             biblio_df = biblio_df[reshape_filter]
+
         elif isinstance(reshape_filter, Dict):
+
             if not all(col in biblio_df.columns for col in reshape_filter.keys()):
                 raise ValueError(f"One or more columns not found in biblio_df: {reshape_filter}")
-            biblio_df = biblio_df[list(reshape_filter.keys())].rename(columns = reshape_filter)
+            
+            reshape_columns = list(reshape_filter.keys())
+
+            if 'bib_src' not in reshape_columns:
+                reshape_columns.append('bib_src')
+
+            biblio_df = biblio_df[reshape_columns].rename(columns = reshape_filter)
 
     return biblio_df
 
@@ -1014,7 +1077,7 @@ def excel_highlights_builder(biblio_highlights_df: pd.DataFrame,
     return wb
 
 
-def highlight_biblio_df(biblio_df: pd.DataFrame,
+def highlight_keywords(biblio_df: pd.DataFrame,
                         highlight_params: List[Dict[str, Union[List[str], str]]],
                         html_cols: Optional[List] = None,
                         xlsx_cols: Optional[List] = None,

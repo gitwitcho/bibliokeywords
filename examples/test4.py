@@ -6,17 +6,17 @@ from utilities import *
 from config import *
 from transform import *
 
-project = 'systemic_risk'
+model_project_dir = 'systemic_risk'
 root_dir = Path(__file__).resolve().parents[1]
 
 # create_biblio_folders(project)
 
-biblio_df = read_and_merge_csv_files(project = project, 
+biblio_df = read_and_merge_csv_files(project = model_project_dir, 
                                      input_dir = 'raw/scopus',
                                      is_dimensions = False,
                                      n_rows = 200)
 
-biblio_df = reshape_cols_biblio_df(biblio_df = biblio_df, 
+biblio_df = rename_and_retain_cols_biblio_df(biblio_df = biblio_df, 
                                    reshape_base = Reshape.SCOPUS_FULL)
 
 biblio_df = add_biblio_source(biblio_df = biblio_df,
@@ -31,7 +31,7 @@ biblio_df = clean_biblio_df(biblio_df = biblio_df,
                             biblio_type = BiblioType.SCOPUS)
 
 write_df(biblio_df = biblio_df,
-         project = project,
+         project = model_project_dir,
          output_dir = 'results',
          output_file = 'scopus_clean_200_df.csv')
 

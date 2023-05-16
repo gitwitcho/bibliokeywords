@@ -10,61 +10,140 @@ from IPython.core.display import HTML
 
 
 def get_root_dir() -> Path:
-    root_dir = Path(__file__).resolve().parents[1]
-    return root_dir
-
-
-def get_data_dir(project: str) -> Path:
-    return Path(get_root_dir(), data_root_dir, project)
-
-
-def get_model_dir(project: str) -> Path:
-    return Path(get_root_dir(), model_root_dir, project)
-
-
-def create_biblio_folders(project: str) -> Path:
     """
-    Creates the data folder structure for a new project with the given name. This assumes
-    that this python file is located in the root_dir/src folder.
+    Returns the absolute path to the root folder of the Python project.
+    Assumes the presence of a list of marker files or directories indicating the root.
 
-    Args:
-        project (str): The name of the project folder inside the data folder.
+    Globals:
+        project_root_markers (List[str]): A list of file and directory names to be checked as markers. 
+        Defined in config.py.
 
     Returns:
-        root_dir (str): The root directory of the 
+        A string representing the absolute path to the root folder.
+        None is returned if the root folder cannot be determined.
+    """
+
+    current_dir = Path(__file__).resolve().parent
+
+    # Traverse up the directory hierarchy until any marker is found or the root is reached
+    while not any((current_dir / marker).exists() for marker in project_root_markers):
+        parent_dir = current_dir.parent
+
+        # If the current directory is the actual root, exit the loop as no marker was found
+        if current_dir == parent_dir:
+            raise ValueError(f"Could not find any of the markers in [{','.join(project_root_markers)}]")
+        
+        current_dir = parent_dir
+
+    return current_dir
+
+
+def get_data_dir(biblio_project_dir_name: str) -> Path:
+    """
+    Returns the path to the data directory of a bibliometric project.
+
+    Args:
+        biblio_project_dir: The name of the bibliometric project directory.
+
+    Returns:
+        A Path object representing the path to the bibliometric project's data directory.
+
+    Raises:
+        ValueError: If the data directory does not exist.
+    """
+
+    # Get the root directory of the project
+    root_dir = get_root_dir()
+
+    # Construct the path to the data directory
+    data_dir = Path(root_dir, data_root_dir, biblio_project_dir_name)
+
+    # Check if the path exists
+    if not data_dir.exists():
+        raise ValueError(f"The path '{data_dir}' does not exist.")
+
+    return data_dir
+
+
+def get_model_dir(biblio_project_dir_name: str) -> Path:
+    """
+    Returns the path to the model directory of a bibliometric project.
+
+    Args:
+        biblio_project_dir: The name of the bibliometric project directory.
+
+    Returns:
+        A Path object representing the path to the bibliometric project's model directory.
+
+    Raises:
+        ValueError: If the data directory does not exist.
+    """
+
+    # Get the root directory of the project
+    root_dir = get_root_dir()
+
+    # Construct the path to the data directory
+    model_dir = Path(root_dir, model_root_dir, biblio_project_dir_name)
+
+    # Check if the path exists
+    if not model_dir.exists():
+        raise ValueError(f"The path '{model_dir}' does not exist.")
+
+    return model_dir
+
+
+def create_biblio_project_folders(biblio_project_dir_name: str) -> None:
+    """
+    Creates the directory structure for a new bibliometric project. 
+    
+    A bibliometric project has bibliographic data and models that are stored in
+    the data and models directories respectively. The CSV files and topic models
+    for a literature review could for instance be stored in its own bibliometric
+    project direcrtory 'biblio_project_dir_name', in the 'data' and 'model'
+    subdirectories.
+
+    The following folder structure is created by this function:
+
+    - root_dir/
+        - data/
+            - biblio_project_dir_name/
+                - raw/
+                - processed/
+                - results/
+        - models/
+            - biblio_project_dir_name/
+
+    Args:
+        biblio_project_dir_name (str): The name of the biblio project directory.
+
+    Returns:
+        None
     """
 
     # Set the root directory of the project
-    # root_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
     root_dir = get_root_dir()
-    data_dir = get_data_dir(project)
-    model_dir = get_model_dir(project)
+    data_dir = get_data_dir(biblio_project_dir_name)
+    model_dir = get_model_dir(biblio_project_dir_name)
 
     # Create the folder structure if the project directory doesn't exist
-    if not os.path.exists(data_dir):
-        os.makedirs(data_dir)
-        os.makedirs(os.path.join(data_dir, 'raw'))
-        os.makedirs(os.path.join(data_dir, 'processed'))
-        os.makedirs(os.path.join(data_dir, 'results'))
+    if not data_dir.exists():
+        data_dir.mkdir(parents=True)
+        (data_dir / 'raw').mkdir()
+        (data_dir / 'processed').mkdir()
+        (data_dir / 'results').mkdir()
 
-    # if not os.path.exists(os.path.join(root_dir, 'data/processed', project)):
-    #     os.makedirs(os.path.join(root_dir, 'data/processed', project))
-
-    # if not os.path.exists(os.path.join(root_dir, 'data/results', project)):
-    #     os.makedirs(os.path.join(root_dir, 'data/results', project))
-
-    if not os.path.exists(model_dir):
-        os.makedirs(os.path.join(model_dir))
+    if not model_dir.exists():
+        model_dir.mkdir(parents=True)
 
     logger.info(f"Working directory: {root_dir}")
 
-    return root_dir
+    return
 
 
-def check_output_file(root_dir: Path,
-                      project: str, 
+def check_output_dir_and_ext(biblio_project_dir_name: str, 
                       output_file: Optional[str] = None,
-                      output_dir: Optional[str] = None
+                      output_dir: Optional[str] = None,
+                      file_extensions: Optional[List[str]] = None
                       ) -> None:
     """
     Checks that the target directory exists and that output_file has a valid extension.
@@ -73,125 +152,183 @@ def check_output_file(root_dir: Path,
     an output_dir. If an output_dir is provided, check if it exists in the directory 
     path of root_dir/data_root_dir/project/output_dir.
 
-    Raises: 
-        ValueError: If any of the conditions described above are not met. 
-
     Args:
-        root_dir (Path): 
-            The root directory of the project.
-        project (str): 
-            The name of the project.
-        output_file (Optional[str]): 
-            The name of the output file (optional). 
-        output_dir (Optional[str]): 
-            The name of the output directory (optional).
+        biblio_project_dir_name: The name of the bibliometric project directory.
+        output_file: The name of the output file (optional). 
+        output_dir (optional): The name of the output directory (optional).
+        file_extensions: List of valid file extensions (optional).
+
+    Raises: 
+        ValueError: If any of the conditions described above are not met.
 
     Returns:
         None
     """
 
-    # If output_file is provided, check that it ends in .csv or .xlsx and that there is an output_dir
+    root_dir = get_root_dir()
+
+    # If output_file is provided, check that output_dir is also provided
     if output_file:
         if output_dir:
-            output_path = Path(root_dir, data_root_dir, project, output_dir)
+            output_path = Path(root_dir, data_root_dir, biblio_project_dir_name, output_dir)
             if not output_path.is_dir():
                 raise ValueError(f"Output directory does not exist: {output_path}")
         else:
             raise ValueError(f"Since you have provided an output file name, you also need to provide an output directory name")
-        if not Path(output_file).suffix in ['.csv', '.xlsx']:
-            raise ValueError(f"The file name '{output_file}' needs to end in .csv or .xlsx")
+        
+        # Check if the output_file has a valid extension
+        if file_extensions and not Path(output_file).suffix in file_extensions:
+            ext_str = ', '.join(file_extensions[:-1]) + f" or {file_extensions[-1]}"
+            raise ValueError(f"The file name '{output_file}' needs to end in {ext_str}")
 
 
 def write_df(biblio_df: pd.DataFrame,
-             project: str,
+             biblio_project_dir_name: str,
              output_dir: str,
              output_file: str
              ) -> None:
     """
-    Write a pandas DataFrame to a file in the project's output directory.
+    Write a bibliographic dataset to a file in output_dir in the bibliometric project.
 
-    Parameters:
-
-    biblio_df (pd.DataFrame): 
-        The DataFrame to write to file.
-    project (str): 
-        The name of the project.
-    output_file (str): 
-        The name of the output file.
-    output_dir (str): 
-        The name of the output directory.
+    Args:
+        biblio_df: The bibliographic dataset (e.g. Scopus, Lens, Dimensions, Biblio,...).
+        biblio_project_dir_name: The name of the bibliometric project directory.
+        output_dir:  The name of the output directory.
+        output_file: The name of the output file.
 
     Raises:
         ValueError: If the output_file parameter does not have the extension .csv or .xlsx.
 
     Returns:
         None
-    
+
     TODO: Add timestamping
     """
+
+    allowed_file_extensions = ['.csv', '.xlsx']
     root_dir = get_root_dir()
 
-    check_output_file(root_dir = root_dir,
-                      project = project,
-                      output_dir = output_dir,
-                      output_file = output_file)
+    # Check if the output_file parameter has a valid extension and if the output directory exists
+    check_output_dir_and_ext(biblio_project_dir_name = biblio_project_dir_name,
+                             output_dir = output_dir,
+                             output_file = output_file,
+                             file_extensions = allowed_file_extensions)
 
-    logger.info(f"Writing biblio_df to file {output_file}")
-    output_path = Path(root_dir, data_root_dir, project, output_dir, output_file)
+    output_path = Path(root_dir, data_root_dir, biblio_project_dir_name, output_dir, output_file)
     
+    logger.info(f"Writing biblio_df to file {output_file}...")
+
+    # Write the bibliographic dataset to output_file based on the file extension
     if Path(output_file).suffix == '.csv':
         biblio_df.to_csv(output_path, index = False)
     elif Path(output_file).suffix == '.xlsx':
         biblio_df.to_excel(output_path, index = False)
-    else:
-        raise ValueError("Currently only output files with the extension .csv or .xlsx are allowed")
+
+    return
+
+
+def read_biblio_csv_files_to_df(biblio_project_dir_name: str, 
+                                input_dir: str, 
+                                csv_file_names: Union[str, List[str]] = '',
+                                biblio_source: BiblioType = BiblioType.UNDEFINED,
+                                n_rows: Optional[int] = None,
+                                ) -> pd.DataFrame:
+    """
+    Read bibliographic datasets from CSV files and store in a DataFrame.
+
+    The function can read single files, multiple files, and all files in a directory:
+
+    - Single file: provide a file name with the extension .csv for csv_file_names.
+    - Multiple files, method 1: provide a list with file names.
+    - Multiple files method 2: don't specify csv_file_names. I this case, it will
+                               read all the files in the input_dir.
     
+    If the files are in different directories, this can be specified as a path in 
+    the csv_file_names string(s).
 
-def write_keyword_count_to_console(keywords_dict: Dict,
-                                   max_n_rows: int,
-                                   display_width: int = 120):
+    Args:
+        biblio_project_dir_name: 
+            The name of the bibliometric project directory.
+        input_dir: 
+            The name of the directory that contains the files.
+        csv_file_names: 
+            The name(s) of the CSV file(s) to read. If empty, all CSV files 
+            in the input directory are read.
+        biblio_source: 
+            The type of bibliographic data being read (SCOPUS, LENS, DIMS, or BIBLIO).
+            BIBLIO refers to the normalised bibliographic dataset format used
+            in BiblioKeywords.
+        n_rows:
+            The maximum number of rows to read from each CSV file. Reads all rows if omitted.
+
+    Returns:
+        pd.DataFrame:
+            The merged DataFrame containing the bibliographic data.
+
+    Raises:
+        ValueError:
+            - If the input directory does not exist.
+            - If the biblio_type parameter is set to BiblioType.UNDEFINED.
+            - If the biblio_type parameter is not one of the supported types: SCOPUS, LENS, DIMS, or BIBLIO.
+    """
     
-    cli = cmd.Cmd()
+    root_dir = get_root_dir()
 
-    for col, kw_count_df in keywords_dict.items():
+    input_dir_path = Path(root_dir, data_root_dir, biblio_project_dir_name, input_dir)
 
-        # Create the list of keyword-count pairs
-        kw_count_str_list = kw_count_df.apply(lambda row: str(row['kw']) + ' (' + str(row['count']) + ')', axis=1).tolist()
-        total_n_keywords = len(kw_count_str_list)
-
-        # Adjust the list to the available display width and the given maximum number of rows
-        cumulative_str_lengths = [sum(len(string) for string in kw_count_str_list[:i+1]) for i in range(len(kw_count_str_list))]
-        max_characters = max_n_rows * display_width
-        cutoff_idx = max((i for i, num in enumerate(cumulative_str_lengths) if num < max_characters), default = 0)
-        kw_count_str_list = kw_count_str_list[:cutoff_idx]
-
-        # Print the result
-        print(f"\nKeywords for column '{col}")
-        print(f"Displaying {len(kw_count_str_list)} keywords of a total of {total_n_keywords}")
-        print("-------------------------------------------")
-        cli.columnize(kw_count_str_list, displaywidth = display_width)  # neat function to print a list of values to a compact column
-        print("-------------------------------------------")
-
-
-def stack_keyword_count_dfs(keywords_dict: Dict) -> pd.DataFrame:
-
-    # Get the maximum number of rows among the dataframes
-    max_rows = max(df.shape[0] for df in keywords_dict.values())
+    if not input_dir_path.exists():
+        raise ValueError(f"The folder {input_dir_path} does not exist")
+    
+    if biblio_source == BiblioType.UNDEFINED:
+        raise ValueError(f"The parameter biblio_source needs to be set to: SCOPUS, LENS, DIMS, OR BIBLIO")
         
-    stacked_df = pd.DataFrame(index = range(max_rows))
+    # Skip the first row in a Dimensions CSV file, which contains details about the search
+    skip_rows = 1 if biblio_source == BiblioType.DIMS else 0
 
-    # Modify column names for each dataframe
-    for key, df in keywords_dict.items():
-        new_column_names = {df.columns[0]: key, df.columns[1]: key + '_count'}
-        df.rename(columns = new_column_names, inplace = True)
+    # Convert single file name to list
+    if isinstance(csv_file_names, str):
+        csv_file_names = [csv_file_names] if csv_file_names else []
 
-    # Extract the keyword dataframes from the dictionary into a list
-    kws_df_list = list(keywords_dict.values())
+    # Add .csv extension if missing
+    csv_file_names = [f'{f}.csv' if not f.endswith('.csv') else f for f in csv_file_names]
 
-    # Concatenate the keyword dataframes horizontally
-    stacked_df = pd.concat([df.reindex(range(max_rows)) for df in kws_df_list], axis = 1)
+    # Read all CSV files in the input directory if csv_files is empty
+    if not csv_file_names:
+        csv_file_names = [f.name for f in input_dir_path.glob('*.csv')]
 
-    return stacked_df
+    all_dfs = []
+
+    # Read all CSV files and store in a list
+    logger.info(f'Reading {len(csv_file_names)} CSV files...')
+
+    for csv_file_name in csv_file_names:
+        csv_path = input_dir_path / csv_file_name
+        df = pd.read_csv(csv_path, nrows = n_rows, skiprows = skip_rows, on_bad_lines = 'skip')
+        all_dfs.append(df)
+        logger.info(f'File: {csv_file_name}, Size: {len(df)} rows')
+
+    # Merge all dataframes into one
+    biblio_df = pd.concat(all_dfs, ignore_index = True)
+
+    # Apply cutoff again in case multiple files were read
+    if isinstance(n_rows, int):
+        biblio_df = biblio_df.head(n_rows)
+
+    # Create the bib_src column and set to the biblio_type
+    if biblio_source == BiblioType.SCOPUS:
+        biblio_df['bib_src'] = 'scopus'
+    elif biblio_source == BiblioType.LENS:
+        biblio_df['bib_src'] = 'lens'
+    elif biblio_source == BiblioType.DIMS:
+        biblio_df['bib_src'] = 'dims'
+    elif biblio_source == BiblioType.BIBLIO:
+        biblio_df['bib_src'] = 'biblio'
+    else:
+        raise ValueError(f"The parameter biblio_type needs to be set to: SCOPUS, LENS, DIMS, OR BIBLIO")
+
+    logger.info(f"Total number of publications in the dataframe: {len(biblio_df)}")
+
+    return biblio_df
 
 
 def create_keyword_count_html(keywords_dict: Dict,
@@ -228,72 +365,4 @@ def create_keyword_count_html(keywords_dict: Dict,
         kws_html_str += '<br><br>'
         
     return HTML(kws_html_str)
-
-
-def read_csv_biblio_files_to_df(project: str, 
-                                input_dir: str, 
-                                csv_files: Union[str, List[str]] = '',
-                                biblio_type: BiblioType = BiblioType.UNDEFINED,
-                                n_rows: Optional[int] = None,
-                                ) -> pd.DataFrame:
-    
-    root_dir = get_root_dir()
-
-    _input_dir = Path(root_dir, data_root_dir, project, input_dir)
-
-    if not _input_dir.exists():
-        raise ValueError(f"The folder {_input_dir} does not exist")
-    
-    if biblio_type == BiblioType.UNDEFINED:
-        raise ValueError(f"The parameter biblio_type needs to be set to: SCOPUS, LENS, DIMS, OR BIBLIO")
-    
-    # check_output_file(root_dir, project, output_file, output_dir)
-    
-    # Skip the first row in a Dimensions CSV file, which contains details about the search
-    skip_rows = 1 if biblio_type == BiblioType.DIMS else 0
-
-    # Convert single file name to list
-    if isinstance(csv_files, str):
-        csv_files = [csv_files] if csv_files else []
-
-    # Add .csv extension if missing
-    csv_files = [f'{f}.csv' if not f.endswith('.csv') else f for f in csv_files]
-
-    # Read all CSV files in the input directory if csv_files is empty
-    if not csv_files:
-        csv_files = [f.name for f in _input_dir.glob('*.csv')]
-
-    all_df = []
-
-    # Read all CSV files and store in a list
-    logger.info(f'Reading {len(csv_files)} CSV files...')
-
-    for csv_file in csv_files:
-        csv_path = _input_dir / csv_file
-        df = pd.read_csv(csv_path, nrows = n_rows, skiprows = skip_rows, on_bad_lines = 'skip')
-        all_df.append(df)
-        logger.info(f'File: {csv_file}, Size: {len(df)} rows')
-
-    # Merge all dataframes into one
-    biblio_df = pd.concat(all_df, ignore_index = True)
-
-    # Apply cutoff again in case multiple files were read
-    if isinstance(n_rows, int):
-        biblio_df = biblio_df.head(n_rows)
-
-    # Create the bib_src column and set to the biblio_type
-    if biblio_type == BiblioType.SCOPUS:
-        biblio_df['bib_src'] = 'scopus'
-    elif biblio_type == BiblioType.LENS:
-        biblio_df['bib_src'] = 'lens'
-    elif biblio_type == BiblioType.DIMS:
-        biblio_df['bib_src'] = 'dims'
-    elif biblio_type == BiblioType.BIBLIO:
-        biblio_df['bib_src'] = 'biblio'
-    else:
-        raise ValueError(f"The parameter biblio_type needs to be set to: SCOPUS, LENS, DIMS, OR BIBLIO")
-
-    logger.info(f"Total number of publications in the dataframe: {len(biblio_df)}")
-
-    return biblio_df
 

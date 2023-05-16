@@ -6,7 +6,7 @@ from utilities import *
 from config import *
 from transform import *
 
-project = 'systemic_risk'
+data_project = 'systemic_risk'
 root_dir = Path(__file__).resolve().parents[1]
 
 highlight_params = [
@@ -67,23 +67,23 @@ filter_query = "~[[systemic risk, 'equity']] in* title"
 
 # filter_pandas_query = generate_pandas_query_string(filter_query)
 
-biblio_df = read_and_merge_csv_files(project = project, 
+biblio_df = read_and_merge_csv_files(project = data_project, 
                                     input_dir = 'raw/lens',
                                     biblio_type = BiblioType.LENS,
                                     n_rows = 3)
 
-biblio_df = reshape_cols_biblio_df(biblio_df = biblio_df, reshape_base = Reshape.LENS_COMPACT)
+biblio_df = rename_and_retain_cols_biblio_df(biblio_df = biblio_df, reshape_base = Reshape.LENS_COMPACT)
 biblio_df = normalise_biblio_entities(biblio_df = biblio_df)
 biblio_df = clean_biblio_df(biblio_df = biblio_df)
 
 biblio_df = filter_biblio_df(biblio_df = biblio_df,
                              query_str = filter_query)
 
-_, excel_wb = highlight_biblio_df(biblio_df = biblio_df,
+_, excel_wb = highlight_keywords(biblio_df = biblio_df,
                                 highlight_params = highlight_params,
                                 # xlsx_cols = ['title', 'abstract', 'year'],
                                 excel_params= excel_params)
 
 if excel_wb:
-    excel_wb.save(root_dir / 'data' / project / 'results' / 'highlights.xlsx')
+    excel_wb.save(root_dir / 'data' / data_project / 'results' / 'highlights.xlsx')
 

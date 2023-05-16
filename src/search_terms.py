@@ -3,7 +3,7 @@ import re
 
 from typing import List, Union
 from config import *
-from co_term_occurrence import *
+from co_terms import *
 
 
 def extract_search_terms(search_terms_str: str) -> List[str]:
@@ -38,7 +38,7 @@ def expand_with_synonyms(terms: List[str]):
     return expanded_terms
 
 
-def add_col_search_term_matches(biblio_df: pd.DataFrame,
+def add_search_term_matches_as_col(biblio_df: pd.DataFrame,
                                  cols: List,
                                  search_terms: Union[str, List[str]],
                                  full_matches: List[str],

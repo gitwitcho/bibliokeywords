@@ -10,18 +10,18 @@ from config import *
 from transform import *
 from co_term_occurrence import *
 
-project = 'systemic_risk'
+model_project_dir = 'systemic_risk'
 
 exclude_terms = ['human', 'male', 'female']
 
 root_dir = Path(__file__).resolve().parents[1]
 
-biblio_df = read_and_merge_csv_files(project = project, 
+biblio_df = read_and_merge_csv_files(project = model_project_dir, 
                                     input_dir = 'raw/scopus',
                                     biblio_type = BiblioType.SCOPUS,
                                     n_rows = 1000)
 
-biblio_df = reshape_cols_biblio_df(biblio_df = biblio_df, reshape_base = Reshape.SCOPUS_COMPACT)
+biblio_df = rename_and_retain_cols_biblio_df(biblio_df = biblio_df, reshape_base = Reshape.SCOPUS_COMPACT)
 biblio_df = normalise_biblio_entities(biblio_df = biblio_df)
 biblio_df = clean_biblio_df(biblio_df = biblio_df)
 
@@ -59,4 +59,4 @@ ig.plot(graph,
 
 plt.show()
 
-graph.write(root_dir / 'data' / project / 'results' / 'test_graph.graphml', format = 'graphml')
+graph.write(root_dir / 'data' / model_project_dir / 'results' / 'test_graph.graphml', format = 'graphml')

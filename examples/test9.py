@@ -6,19 +6,19 @@ from config import *
 from transform import *
 from keyword_stats import *
 
-project = 'PINNs'
+model_project_dir = 'PINNs'
 
 keyword_cols = ['kws']
 assoc_filter = "[learning, carbon] in* {}"
 
 root_dir = Path(__file__).resolve().parents[1]
 
-biblio_df = read_and_merge_csv_files(project = project, 
+biblio_df = read_and_merge_csv_files(project = model_project_dir, 
                                     input_dir = 'raw/scopus',
                                     biblio_type = BiblioType.SCOPUS,
                                     n_rows = 10)
 
-biblio_df = reshape_cols_biblio_df(biblio_df = biblio_df, reshape_base = Reshape.SCOPUS_COMPACT)
+biblio_df = rename_and_retain_cols_biblio_df(biblio_df = biblio_df, reshape_base = Reshape.SCOPUS_COMPACT)
 biblio_df = normalise_biblio_entities(biblio_df = biblio_df)
 biblio_df = clean_biblio_df(biblio_df = biblio_df)
 
@@ -36,6 +36,6 @@ write_keyword_count_to_console(keywords_dict = keywords_dict,
 keywords_stacked_df = stack_keyword_count_dfs(keywords_dict = keywords_dict)
 
 write_df(biblio_df = keywords_stacked_df,
-         project = project,
+         project = model_project_dir,
          output_dir = 'results',
          output_file = 'keywords_stacked.xlsx')
