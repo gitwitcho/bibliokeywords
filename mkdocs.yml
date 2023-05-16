@@ -1,0 +1,13 @@
+site_name: BiblioTopics
+site_url: https://example.com
+
+nav:
+    - Home: index.md
+    - About: about.md
+    - Utilities: utilities.md
+
+theme:
+    name: material
+
+plugins: 
+    - mkdocstrings

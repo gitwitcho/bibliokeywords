@@ -28,10 +28,10 @@ def create_biblio_folders(project: str) -> Path:
     that this python file is located in the root_dir/src folder.
 
     Args:
-    project (str): The name of the project folder inside the data folder.
+        project (str): The name of the project folder inside the data folder.
 
     Returns:
-    root_dir (str): The root directory of the 
+        root_dir (str): The root directory of the 
     """
 
     # Set the root directory of the project
@@ -67,7 +67,7 @@ def check_output_file(root_dir: Path,
                       output_dir: Optional[str] = None
                       ) -> None:
     """
-    Checks that an output file and directory exist with the correct file extension.
+    Checks that the target directory exists and that output_file has a valid extension.
 
     If output_file is provided, check that it ends in .csv or .xlsx and that there is 
     an output_dir. If an output_dir is provided, check if it exists in the directory 
@@ -76,16 +76,15 @@ def check_output_file(root_dir: Path,
     Raises: 
         ValueError: If any of the conditions described above are not met. 
 
-    Parameters:
-    
-    root_dir (Path): 
-        The root directory of the project.
-    project (str): 
-        The name of the project.
-    output_file (Optional[str]): 
-        The name of the output file (optional). 
-    output_dir (Optional[str]): 
-        The name of the output directory (optional).
+    Args:
+        root_dir (Path): 
+            The root directory of the project.
+        project (str): 
+            The name of the project.
+        output_file (Optional[str]): 
+            The name of the output file (optional). 
+        output_dir (Optional[str]): 
+            The name of the output directory (optional).
 
     Returns:
         None
@@ -108,7 +107,6 @@ def write_df(biblio_df: pd.DataFrame,
              output_dir: str,
              output_file: str
              ) -> None:
-
     """
     Write a pandas DataFrame to a file in the project's output directory.
 
@@ -232,13 +230,12 @@ def create_keyword_count_html(keywords_dict: Dict,
     return HTML(kws_html_str)
 
 
-
-def read_and_merge_csv_files(project: str, 
-                             input_dir: str, 
-                             csv_files: Union[str, List[str]] = '',
-                             biblio_type: BiblioType = BiblioType.UNDEFINED,
-                             n_rows: Optional[int] = None,
-                             ) -> pd.DataFrame:
+def read_csv_biblio_files_to_df(project: str, 
+                                input_dir: str, 
+                                csv_files: Union[str, List[str]] = '',
+                                biblio_type: BiblioType = BiblioType.UNDEFINED,
+                                n_rows: Optional[int] = None,
+                                ) -> pd.DataFrame:
     
     root_dir = get_root_dir()
 
@@ -299,19 +296,4 @@ def read_and_merge_csv_files(project: str,
     logger.info(f"Total number of publications in the dataframe: {len(biblio_df)}")
 
     return biblio_df
-
-
-def get_functions_with_docstrings(module):
-    """
-    Get a list of functions in a module along with their docstrings.
-
-    Args:
-        module: The module object.
-
-    Returns:
-        A list of tuples containing function name and docstring.
-    """
-    functions = inspect.getmembers(module, inspect.isfunction)
-    return [(name, func.__doc__) for name, func in functions if func.__doc__]
-
 
