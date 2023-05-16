@@ -1,6 +1,7 @@
 import os
 import pandas as pd
 import cmd
+import inspect
 
 from config import *
 from typing import Union, List, Dict, Optional
@@ -298,3 +299,19 @@ def read_and_merge_csv_files(project: str,
     logger.info(f"Total number of publications in the dataframe: {len(biblio_df)}")
 
     return biblio_df
+
+
+def get_functions_with_docstrings(module):
+    """
+    Get a list of functions in a module along with their docstrings.
+
+    Args:
+        module: The module object.
+
+    Returns:
+        A list of tuples containing function name and docstring.
+    """
+    functions = inspect.getmembers(module, inspect.isfunction)
+    return [(name, func.__doc__) for name, func in functions if func.__doc__]
+
+
