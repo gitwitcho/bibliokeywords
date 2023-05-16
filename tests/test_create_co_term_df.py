@@ -5,7 +5,7 @@ sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..',
 
 import pandas as pd
 import numpy as np
-from co_term_occurrence import create_co_term_graph
+from co_terms import create_co_term_graph
 
 def test_create_co_term_df():
 
