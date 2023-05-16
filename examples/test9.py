@@ -28,4 +28,14 @@ keywords_dict = generate_keyword_stats(biblio_df_ = biblio_df,
                                        singularise = False,
                                        stem = False)
 
-# TODO: Write the keywords dict to HTML
+# TODO: Write keywords dict to console
+write_keyword_count_to_console(keywords_dict = keywords_dict,
+                               max_n_rows = 10,
+                               display_width = 180)
+
+keywords_stacked_df = stack_keyword_count_dfs(keywords_dict = keywords_dict)
+
+write_df(biblio_df = keywords_stacked_df,
+         project = project,
+         output_dir = 'results',
+         output_file = 'keywords_stacked.xlsx')

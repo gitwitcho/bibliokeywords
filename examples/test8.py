@@ -6,7 +6,7 @@ from pathlib import Path
 from utilities import *
 from config import *
 from transform import *
-from add_col_search_term_matches import *
+from search_term_matches import *
 
 project = 'PINNs'
 

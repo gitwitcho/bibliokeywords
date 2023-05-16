@@ -7,7 +7,7 @@ sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..',
 # import numpy as np
 import re
 
-from add_col_search_term_matches import extract_search_terms
+from search_term_matches import extract_search_terms
 
 def test_extract_search_terms():
 

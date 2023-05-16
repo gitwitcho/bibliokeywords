@@ -1,9 +1,11 @@
 import os
 import pandas as pd
+import cmd
 
 from config import *
 from typing import Union, List, Dict, Optional
 from pathlib import Path
+from IPython.core.display import HTML
 
 
 def get_root_dir() -> Path:
@@ -144,6 +146,90 @@ def write_df(biblio_df: pd.DataFrame,
         biblio_df.to_excel(output_path, index = False)
     else:
         raise ValueError("Currently only output files with the extension .csv or .xlsx are allowed")
+    
+
+def write_keyword_count_to_console(keywords_dict: Dict,
+                                   max_n_rows: int,
+                                   display_width: int = 120):
+    
+    cli = cmd.Cmd()
+
+    for col, kw_count_df in keywords_dict.items():
+
+        # Create the list of keyword-count pairs
+        kw_count_str_list = kw_count_df.apply(lambda row: str(row['kw']) + ' (' + str(row['count']) + ')', axis=1).tolist()
+        total_n_keywords = len(kw_count_str_list)
+
+        # Adjust the list to the available display width and the given maximum number of rows
+        cumulative_str_lengths = [sum(len(string) for string in kw_count_str_list[:i+1]) for i in range(len(kw_count_str_list))]
+        max_characters = max_n_rows * display_width
+        cutoff_idx = max((i for i, num in enumerate(cumulative_str_lengths) if num < max_characters), default = 0)
+        kw_count_str_list = kw_count_str_list[:cutoff_idx]
+
+        # Print the result
+        print(f"\nKeywords for column '{col}")
+        print(f"Displaying {len(kw_count_str_list)} keywords of a total of {total_n_keywords}")
+        print("-------------------------------------------")
+        cli.columnize(kw_count_str_list, displaywidth = display_width)  # neat function to print a list of values to a compact column
+        print("-------------------------------------------")
+
+
+def stack_keyword_count_dfs(keywords_dict: Dict) -> pd.DataFrame:
+
+    # Get the maximum number of rows among the dataframes
+    max_rows = max(df.shape[0] for df in keywords_dict.values())
+        
+    stacked_df = pd.DataFrame(index = range(max_rows))
+
+    # Modify column names for each dataframe
+    for key, df in keywords_dict.items():
+        new_column_names = {df.columns[0]: key, df.columns[1]: key + '_count'}
+        df.rename(columns = new_column_names, inplace = True)
+
+    # Extract the keyword dataframes from the dictionary into a list
+    kws_df_list = list(keywords_dict.values())
+
+    # Concatenate the keyword dataframes horizontally
+    stacked_df = pd.concat([df.reindex(range(max_rows)) for df in kws_df_list], axis = 1)
+
+    return stacked_df
+
+
+def create_keyword_count_html(keywords_dict: Dict,
+                              n_cols: int,
+                              max_n_rows: int) -> HTML:
+    
+    kws_html_str = ''
+
+    for col, kw_count_df in keywords_dict:
+
+        kw_count_str_list = kw_count_df.apply(lambda row: str(row['kw']) + ' (' + str(row['count']) + ')', axis=1).tolist()
+
+        # Calculate the number of rows in the table
+        n_rows = len(kw_count_str_list) // n_cols + (len(kw_count_str_list) % n_cols > 0)
+        num_rows_all = n_rows
+
+        # Row cutoff
+        if n_rows > max_n_rows:
+            n_rows = max_n_rows
+
+        # Create an HTML string to display the list of strings in a table
+        kws_html_str = "<h3>Keywords for column '{col}'"
+        kws_html_str += f"Total number of '{col}' keywords: {len(kw_count_str_list)}"
+        kws_html_str += f"Displaying {n_rows} rows of a total of {max_n_rows}"
+        kws_html_str += '<table style="width:100%;">'
+        for j in range(n_cols):
+            kws_html_str += '<td style="vertical-align:top;">'
+            for i in range(n_rows):
+                idx = j * n_rows + i
+                if idx < len(kw_count_str_list) and kw_count_str_list[idx]:
+                    kws_html_str += f'{kw_count_str_list}<br>'
+            kws_html_str += '</td>'
+        kws_html_str += '</table>'
+        kws_html_str += '<br><br>'
+        
+    return HTML(kws_html_str)
+
 
 
 def read_and_merge_csv_files(project: str, 
