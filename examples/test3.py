@@ -21,14 +21,14 @@ model, biblio_topics_df = generate_bert_topics(biblio_df = biblio_df,
                                                verbose = True)
 
 reshape_filter = {'Document': 'title', 'Topic': 'tp_num', 'Name': 'tp_name', 'Top_n_words': 'top_n_words'}
-topic_info_df = rename_and_retain_cols_biblio_df(biblio_df = biblio_topics_df,
+topic_info_df = modify_cols_biblio_df(biblio_df = biblio_topics_df,
                                 reshape_filter = reshape_filter)
 
 topic_summary_df = create_topic_summary_df(topic_info_df = topic_info_df)
 
 reshape_filter = {'title': 'title', 'year': 'year', 'abstract': 'abstract', 
                   'Topic': 'tp_num', 'Name': 'tp_name', 'Top_n_words': 'top_n_words'}
-biblio_topics_df = rename_and_retain_cols_biblio_df(biblio_df = biblio_topics_df,
+biblio_topics_df = modify_cols_biblio_df(biblio_df = biblio_topics_df,
                                     reshape_filter = reshape_filter)
 
 write_df(biblio_df = topic_summary_df, 

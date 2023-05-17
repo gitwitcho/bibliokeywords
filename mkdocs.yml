@@ -5,6 +5,7 @@ nav:
     - Home: index.md
     - About: about.md
     - Utilities: utilities.md
+    - Transform: transform.md
 
 theme:
     name: material

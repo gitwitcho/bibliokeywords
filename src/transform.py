@@ -14,57 +14,59 @@ from openpyxl.cell.rich_text import TextBlock, CellRichText
 from config import *
 from utilities import *
 
-def rename_and_retain_cols_biblio_df(biblio_df: pd.DataFrame,
+def modify_cols_biblio_df(biblio_df_: pd.DataFrame,
                                      reshape_base: Optional[Reshape] = None,
                                      reshape_filter: Optional[Union[Dict,List]] = None,
                                      keep_bib_src: bool = True
                                      ) -> pd.DataFrame:
     """
-    Rename and retain columns in the bibliographic dataset biblio_df based on reshape_base with its
-    preset criteria or reshape_filter, where you define what column to retain and how to rename them.
+    Rename and retain columns in the bibliographic dataset `biblio_df` based on `reshape_base` with its
+    preset criteria or on `reshape_filter`, where you define what column to retain and how to rename them.
     
     The reshape_base parameter allows you to specify preset criteria for renaming and retaining the columns 
-    in the bibliographic DataFrame. The available values for reshape_base are defined in the 
-    config.py file. For each bibliographic database that can be processed (e.g.Scopus, Lens, 
-    Dimensions), there are three levels of detail that can be retained: All, Full, and Compact.
+    in the bibliographic `DataFrame`. The available values for `reshape_base` are defined in the 
+    `config.py` file. For each bibliographic database that can be processed (e.g.Scopus, Lens, 
+    Dimensions), there are three levels of detail that can be retained: *All*, *Full*, and *Compact*.
 
-    - The "All" level retains all the columns of the raw dataset from the respective bibliographic database.
-    - The "Full" level removes certain columns from biblio_df that might not be needed for the analysis.
-    - The "Compact" level is similar to "Full" and further reduces the number of columns in biblio_df.
+    - The "All" level retains all the columns of the raw dataset from the respective bibliographic database:
+      `Reshape.SCOPUS_ALL`, `Reshape.LENS_ALL`, `Reshape.DIMS_ALL`.
+    - The "Full" level removes certain columns from `biblio_df` that might not be needed for the analysis:
+      `Reshape.SCOPUS_FULL`, `Reshape.LENS_FULL`, `Reshape.DIMS_FULL`.
+    - The "Compact" level is similar to "Full" and further reduces the number of columns in `biblio_df`:
+      `Reshape.SCOPUS_COMPACT`, `Reshape.LENS_COMPACT`, `Reshape.DIMS_COMPACT`.
     
-    Alternatively, you can use the reshape_filter parameter to specify a list of column names in biblio_df 
+    Alternatively, you can use the `reshape_filter` parameter to specify a list of column names in `biblio_df` 
     that you want to retain. This allows you to manually select the specific columns you need for further analysis.
 
-    By using either reshape_base or reshape_filter, you can customize the column selection and reshaping process 
-    of the bibliographic DataFrame based on your requirements.
-
+    By using either `reshape_base` or `reshape_filter`, you can customize the column selection and reshaping process 
+    of the bibliographic `DataFrame` based on your requirements.
 
     Args:
-        biblio_df (pd.DataFrame):
-            The input bibliographic DataFrame.
-        reshape_base (Optional[Reshape]):
-            The base reshape criteria. If provided, only the columns specified in the
-            `reshape_base` criteria will be retained and renamed according to the predefined
-            reshape structures defined in `reshape_strucs`. Default is None.
-        reshape_filter (Optional[Union[Dict, List]]):
-            The additional reshape criteria for filtering specific columns.
+        biblio_df: 
+            The input bibliographic `DataFrame`.
+        reshape_base:
+            If provided, only the columns specified in the `reshape_base` criteria will be retained and renamed 
+            according to the predefined reshape structures (e.g. `reshape_struc_dims_compact`) defined in `config.py`.
+        reshape_filter:
+            A list or dictionary of column names for retaining specific columns. If a `reshape_base`is provided, 
+            the `reshape_filter` only retains columns that are present once `reshape_base` has been applied.
             - If `reshape_filter` is a list, only the columns present in the list will be retained.
             - If `reshape_filter` is a dictionary, the keys represent the columns to be retained,
-              and the values represent the new column names. Default is None.
-        keep_bib_src (bool):
-            Flag indicating whether to retain the 'bib_src' column in the output DataFrame. Otherwise
-            it will be removed through the reshaping, which is not what we typically want.
-            If True, the 'bib_src' column is preserved. If False, it is removed. Default is True.
-
+              and the values represent the new column names.
+        keep_bib_src:
+            Flag indicating whether to retain the 'bib_src' column in the output `DataFrame`. Otherwise
+            it will be removed when applying `rehshape_base`and `reshape_column`(unless you provide it in the list).
+            The values in `bib_src` are used in some of the other functions. 
     Returns:
-        pd.DataFrame:
-            The reshaped bibliographic DataFrame.
+        The modified bibliographic `DataFrame`.
 
     Raises:
         ValueError:
             - If any of the columns specified in `reshape_base` are not found in the `biblio_df`.
             - If any of the columns specified in `reshape_filter` are not found in the `biblio_df`.
     """
+
+    biblio_df = biblio_df_.copy()
 
     if reshape_base:
         if not all(col in biblio_df.columns for col in reshape_strucs[reshape_base.value].keys()):
@@ -103,28 +105,84 @@ def rename_and_retain_cols_biblio_df(biblio_df: pd.DataFrame,
     return biblio_df
 
 
-def add_search_label(biblio_df: pd.DataFrame,
+def add_search_label(biblio_df_: pd.DataFrame,
                      search_label: str) -> pd.DataFrame:
+    '''
+    Add a column `search_label` to `biblio_df`.
+     
+    In some cases, especially when merging bibliographic datasets from different sources, it is helpful to
+    know where the searches come from or what particular search terms were used. The `search_label`
+    of merged datasets are merged into a list.
+
+    Args:
+        biblio_df: 
+            The input bibliographic `DataFrame`.
+        search_label:
+            The search label that will be added to the column 'search_label.
+    
+    Returns:
+        The bibliographic dataset `biblio_df` with the new column `search_label`.
+    '''
+
+    biblio_df = biblio_df_.copy()
+
     biblio_df['search_label'] = search_label
+    
     return biblio_df
 
 
-def add_biblio_source(biblio_df: pd.DataFrame,
-                      biblio_source: BiblioType) -> pd.DataFrame:
-    
-    if biblio_source == BiblioType.SCOPUS:
+def add_biblio_source(biblio_df_: pd.DataFrame,
+                      biblio_source: BiblioSource = BiblioSource.UNDEFINED
+                      ) -> pd.DataFrame:
+    """
+    Adds a bibliography source column to `biblio_df` based on the specified `BiblioSource`.
+
+    Use this function in case the `bib_src` has not been set correctly or the bibliographic
+    dataset wasn't read with `read_biblio_csv_files_to_df`.
+
+    Args:
+        biblio_df: 
+            The bibliographic dataset to add the bibliography source column to.
+        biblio_source: 
+            The bibliography source: `SCOPUS`, `LENS`, `DIMS`, `BIBLIO`. See `config.py` for 
+            an updated list.
+
+    Returns:
+        pd.DataFrame: The modified DataFrame with the bibliography source column added.
+    """
+
+    biblio_df = biblio_df_.copy()
+
+    if biblio_source == BiblioSource.SCOPUS:
         biblio_df['bib_src'] = 'scopus'
-    elif biblio_source == BiblioType.LENS:
+    elif biblio_source == BiblioSource.LENS:
         biblio_df['bib_src'] = 'lens'
-    elif biblio_source == BiblioType.DIMS:
+    elif biblio_source == BiblioSource.DIMS:
         biblio_df['bib_src'] = 'dims'
-    else:
+    elif biblio_source == BiblioSource.BIBLIO:
         biblio_df['bib_src'] = 'biblio'
 
     return biblio_df
 
 
 def format_auth_scopus(authors: Union[str, float]) -> Union[str, float]:
+    """
+    Reformats the author names string of a Scopus publication in a CSV export.
+
+    The normalised format is
+
+    - For a single author: `Surname, Initials` (e.g. Smith, J.A.)
+    - For multipe authors: `Surname1, Initials1; Surname 2, Initials2 (e.g. Martínez, X.; Müller, H.W.)
+
+    Example of a Scopus author names string: `Alexandre M., Silva T.C., Michalak K., Rodrigues F.A.`
+
+    Args:
+        authors: 
+            The author names as a string in Scopus format. Handles NaN via `float`.
+
+    Returns:
+        The formatted author names as a string or NaN if missing.
+    """
 
     if isinstance(authors, str) and authors != '':
         authors_lst = authors.split(',')
@@ -132,20 +190,42 @@ def format_auth_scopus(authors: Union[str, float]) -> Union[str, float]:
         authors_str_lst = []
 
         for author in authors_lst:
-            # author = author.replace(',', '')
+
+            # Split author name into parts (surname and initials)
             author_parts = author.strip().split()
             surname = author_parts[0].strip()
             initials = [name.strip()[0] + '.' if not name.endswith('.') else name.strip() for name in author_parts[1:]]
             initials = ''.join(initials)
+
+            # Create normalised author string
             author_str = '{}, {}'.format(surname, initials)
             authors_str_lst.append(author_str)
 
-        return '; '.join(authors_str_lst)
+        normalised_str = '; '.join(authors_str_lst)
+
+        return normalised_str
     else:
         return np.nan
 
 
 def format_auth_lens(authors: Union[str, float]) -> Union[str, float]:
+    """
+    Reformats the author names string of a Lens publication in a CSV export.
+
+    The normalised format is
+
+    - For a single author: `Surname, Initials` (e.g. Smith, J.A.)
+    - For multipe authors: `Surname1, Initials1; Surname 2, Initials2 (e.g. Martínez, X.; Müller, H.W.)
+
+    Example of a Lens author names string: `Elena L. Mishchenko; A. M. Mishchenko; Vladimir A. Ivanisenko`
+
+    Args:
+        authors: 
+            The author names as a string in Lens format. Handles NaN via `float`.
+
+    Returns:
+        The formatted author names as a string or NaN if missing.
+    """
 
     if isinstance(authors, str) and authors != '':
         authors_lst = authors.split(';')
@@ -153,19 +233,42 @@ def format_auth_lens(authors: Union[str, float]) -> Union[str, float]:
         authors_str_lst = []
 
         for author in authors_lst:
+
+            # Split author name into parts (surname and initials)
             author_parts = author.strip().split()
             surname = author_parts[-1]
             initials = [name[0] + '.' if not name.endswith('.') else name for name in author_parts[:-1]]
             initials = ''.join(initials)
+
+            # Create normalised author string
             author_str = '{}, {}'.format(surname.strip(), initials.strip())
             authors_str_lst.append(author_str)
 
-        return '; '.join(authors_str_lst)
+        normalised_str = '; '.join(authors_str_lst)
+
+        return normalised_str
     else:
         return np.nan
 
 
 def format_auth_dims(authors: Union[str, float]) -> Union[str, float]:
+    """
+    Reformats the author names string of a Dimensions publication in a CSV export.
+
+    The normalised format is
+
+    - For a single author: `Surname, Initials` (e.g. Smith, J.A.)
+    - For multipe authors: `Surname1, Initials1; Surname 2, Initials2 (e.g. Martínez, X.; Müller, H.W.)
+
+    Example of a Dimensions author names string: `Bai, Xiao; Sun, Huaping; Lu, Shibao; Taghizadeh-Hesary, Farhad`
+
+    Args:
+        authors: 
+            The author names as a string in Dimensions format. Handles NaN via `float`.
+
+    Returns:
+        The formatted author names as a string or NaN if missing.
+    """
 
     if isinstance(authors, str) and authors != '':
         authors_lst = authors.split(';')
@@ -173,29 +276,59 @@ def format_auth_dims(authors: Union[str, float]) -> Union[str, float]:
         authors_str_lst = []
 
         for author in authors_lst:
+
+            # Split author name into parts (surname and initials)
             author = author.replace(',', '')
             author_parts = author.strip().split()
             surname = author_parts[0].strip()
             initials = [name.strip()[0] + '.' if not name.endswith('.') else name.strip() for name in author_parts[1:]]
             initials = ''.join(initials)
+
+            # Create normalised author string
             author_str = '{}, {}'.format(surname, initials)
             authors_str_lst.append(author_str)
 
-        return '; '.join(authors_str_lst)
+        normalised_str = '; '.join(authors_str_lst)
+
+        return normalised_str
     else:
         return np.nan
 
 
-def format_auth_affils_scopus(x: Union[str, float]) -> Union[str, float]:
-        
+def format_auth_affils_scopus(auth_affils_str: Union[str, float]) -> Union[str, float]:
+    """
+    Reformats the authors-affilitions string of a Scopus publication in a CSV export.
+
+    The normalised format is
+
+    - For a single author-affiliation: `Surname, Initials (Affiliation(s))` (e.g. Jin, X. (Luxembourg School of Finance, University of Luxembourg, Luxembourg))
+    - For multipe authors-affiliations: `Surname1, Initials1 (Affiliation(s)1); Surname 2, Initials2 (Affiliation(s)2)
+
+    Example of a Scopus authors-affiliations names string: `Blundell-Wignall, A., Enterprise Affairs, OECD, France; Roulet, C., Enterprise Affairs, OECD, France`
+
+    !!! note
+        Since Lens does not provide affiliation information, there is no corresponding function `format_auth_affils_lens`.
+
+    Args:
+        auth_affils_str: 
+            The authors-affiliations as a string in Scopus format. Handles NaN via `float`.
+
+    Returns:
+        The formatted authors-affiliations string or NaN if missing.
+    """
+ 
     auth_affils =[]
 
-    if isinstance(x, str):  # prevents a Pylance error in x.split()
-        if x != '':
-            auth_affils = [re.split(r'\.\s*,|.\s+,\s*', name.strip(), maxsplit = 1) for name in x.split(';')]
+    if isinstance(auth_affils_str, str):  # prevents a Pylance error in x.split()
+        if auth_affils_str != '':
+            # Split auth_affils_str into individual author-affiliation pairs
+            auth_affils = [re.split(r'\.\s*,|.\s+,\s*', name.strip(), maxsplit = 1) for name in auth_affils_str.split(';')]
+
+            # Format each author-affiliation pair
             auth_affils = [[parts[0] + '.' if len(parts) > 1 else parts[0], parts[1].strip()] if len(parts) > 1 else 
                         [parts[0].strip()] for parts in auth_affils]
         else:
+            # If auth_affils_str is an empty string, return a default anonymous author-affiliation
             return 'Anonymous ()'
     else:
         return np.nan
@@ -204,7 +337,8 @@ def format_auth_affils_scopus(x: Union[str, float]) -> Union[str, float]:
 
     for auth_affil in auth_affils:
         
-        # If author_affil has just one, assume that the affiliation is missing
+        # Create the formatted author-affiliation string in the normalised format
+        # If author_affil has just one element (author or affiliation), assume that the affiliation rather than the author name is missing
         if len(auth_affil) == 1:
             auth_affil_str = '{} ()'.format(auth_affil[0].strip())
         else:
@@ -212,15 +346,37 @@ def format_auth_affils_scopus(x: Union[str, float]) -> Union[str, float]:
         
         auth_affil_str_lst.append(auth_affil_str)
 
-    return '; '.join(auth_affil_str_lst)
+    normalised_str = '; '.join(auth_affil_str_lst)
+
+    return normalised_str
 
 
-def format_auth_affils_dims(x: Union[str, float]) -> Union[str, float]:
-    
+def format_auth_affils_dims(auth_affils_str: Union[str, float]) -> Union[str, float]:
+    """
+    Reformats the authors-affilitions string of a Dimensions publication in a CSV export.
+
+    The normalised format is
+
+    - For a single author-affiliation: `Surname, Initials (Affiliation(s))` (e.g. Jin, X. (Luxembourg School of Finance, University of Luxembourg, Luxembourg))
+    - For multipe authors-affiliations: `Surname1, Initials1 (Affiliation(s)1); Surname 2, Initials2 (Affiliation(s)2)
+
+    Example of a Scopus authors-affiliations names string: `Schweizer, Pia‐Johanna (Institute for Advanced Sustainability Studies (IASS), Potsdam, Germany); Goble, Robert (Clark University, Worcester, MA, USA)`
+
+    !!! note
+        Since Lens does not provide affiliation information, there is no corresponding function `format_auth_affils_lens`.
+
+    Args:
+        auth_affils_str: 
+            The authors-affiliations as a string in Dimensions format. Handles NaN via `float`.
+
+    Returns:
+        The formatted authors-affiliations string or NaN if missing.
+    """
+
     # The auth_affil strings are split at ';' except if the ';' is inside of parentheses. In that case, it
-    # separates multiple affiliations.
-    if isinstance(x, str):  # prevents a Pylance error in x.split()
-        auth_affils = [part.strip().split('(', maxsplit = 1) for part in re.split(r';(?![^()]*\))', x.strip())]
+    # separates multiple affiliations and is therefore ignored.
+    if isinstance(auth_affils_str, str):  # prevents a Pylance error in x.split()
+        auth_affils = [part.strip().split('(', maxsplit = 1) for part in re.split(r';(?![^()]*\))', auth_affils_str.strip())]
     else:
         return np.nan
 
@@ -249,7 +405,7 @@ def format_auth_affils_dims(x: Union[str, float]) -> Union[str, float]:
             surname = ''
             name = ''
 
-        # Construct the final string
+        # Construct the normalised author-affiliation string
         auth_affil_str = np.nan
 
         if surname:
@@ -259,56 +415,94 @@ def format_auth_affils_dims(x: Union[str, float]) -> Union[str, float]:
 
         auth_affil_str_lst.append(auth_affil_str)
 
-    if len(auth_affil_str_lst) == 0 or all(x is np.nan for x in auth_affil_str_lst):
+    if not auth_affil_str_lst:
         return np.nan
     else:
-        return '; '.join(auth_affil_str_lst)
+        normalised_str = '; '.join(auth_affil_str_lst)
+        return normalised_str
 
 
-def get_biblio_source_string(biblio_source: BiblioType) -> Union[str, float]:
+def get_biblio_source_string(biblio_source: BiblioSource) -> Union[str, float]:
+    """
+    Retrieves the string representation of a bibliography source.
+
+    Args:
+        biblio_source: The source of the bibliography (e.g. `BiblioSource.SCOPUS`).
+
+    Returns:
+        The string representation of the bibliography source (e.g. `scopus`) or NaN if not recognized.
+    """
+
     biblio_source_str = np.nan
 
-    if biblio_source == BiblioType.SCOPUS:
+    if biblio_source == BiblioSource.SCOPUS:
         biblio_source_str = 'scopus'
-    elif biblio_source == BiblioType.LENS:
+    elif biblio_source == BiblioSource.LENS:
         biblio_source_str = 'lens'
-    elif biblio_source == BiblioType.DIMS:
+    elif biblio_source == BiblioSource.DIMS:
         biblio_source_str = 'dims'
-    elif biblio_source == BiblioType.BIBLIO:
+    elif biblio_source == BiblioSource.BIBLIO:
         biblio_source_str = 'biblio'
+    else:
+        raise ValueError(f"The value passed for biblio_source is invalid.")
     
     return biblio_source_str
 
 
-def normalise_biblio_entities(biblio_df: pd.DataFrame,
-                              biblio_source: BiblioType = BiblioType.UNDEFINED
+def normalise_biblio_entities(biblio_df_: pd.DataFrame,
+                              biblio_source: BiblioSource = BiblioSource.UNDEFINED
                               ) -> pd.DataFrame:
+    """
+    Converts certain values in the bibliographic dataset `biblio_df` to a normalised 
+    format so that datasets from different bibliographic databases can be merged.
 
-    if biblio_source == BiblioType.UNDEFINED:
+    The exact values that are normalised depend on the source (Scopus, Lens,...) of 
+    the dataset provided by 'biblio_source`. If `biblio_source` is not provided, the
+    function will try to obtain it from `bib_src`. This only works if there is just 
+    one bibliographic source provided in `bib_src` and it is the same for are all
+    publications in `biblio_df`.
+
+    Args:
+        biblio_df: 
+            The bibliographic dataset.
+        biblio_source: 
+            The bibliographic database that is the source of the bibliographic dataset.
+
+    Returns:
+        The bibliographic dataset with normalised bibliographic entities.
+    """
+
+    biblio_df = biblio_df_.copy()
+
+    if biblio_source == BiblioSource.UNDEFINED:
+
+        # Check if the bib_src column exists and has consistent values
         if 'bib_src' in biblio_df.columns:
+
+            # Determine the bibliography source based on the first record
             if (biblio_df['bib_src'].isin(['scopus', 'lens', 'dims', 'biblio'])).all():
                 if biblio_df.loc[0, 'bib_src'] == 'scopus':
-                    biblio_source = BiblioType.SCOPUS
+                    biblio_source = BiblioSource.SCOPUS
                 elif biblio_df.loc[0, 'bib_src'] == 'lens':
-                    biblio_source = BiblioType.LENS
+                    biblio_source = BiblioSource.LENS
                 elif biblio_df.loc[0, 'bib_src'] == 'dims':
-                    biblio_source = BiblioType.DIMS
+                    biblio_source = BiblioSource.DIMS
                 elif biblio_df.loc[0, 'bib_src'] == 'biblio':
-                    biblio_source = BiblioType.BIBLIO
+                    biblio_source = BiblioSource.BIBLIO
             else:
                 raise ValueError(f"The bib_src needs to be the same for all records in biblio_df")
         else:
             raise ValueError(f"You either need to pass a biblio_source to the function or add a bib_src column")
 
     # Create the clickable link and the list of all links
-    if biblio_source == BiblioType.SCOPUS:
+    if biblio_source == BiblioSource.SCOPUS:
         if 'doi' in biblio_df.columns:
             biblio_df['link'] = 'https://dx.doi.org/' + biblio_df['doi']
             biblio_df['links'] = biblio_df['link']
         else:
             biblio_df['link'] = np.nan
             biblio_df['links'] = np.nan
-    elif biblio_source == BiblioType.LENS:
+    elif biblio_source == BiblioSource.LENS:
         biblio_df['link'] = np.nan
         biblio_df['links'] = np.nan
 
@@ -317,7 +511,7 @@ def normalise_biblio_entities(biblio_df: pd.DataFrame,
         if 'source_urls' in biblio_df.columns:
             biblio_df['links'] = biblio_df['source_urls']
             
-    elif biblio_source == BiblioType.DIMS:
+    elif biblio_source == BiblioSource.DIMS:
         if 'ext_url' in biblio_df.columns:
             biblio_df['link'] = biblio_df['ext_url']
             biblio_df['links'] = biblio_df['ext_url']
@@ -325,19 +519,19 @@ def normalise_biblio_entities(biblio_df: pd.DataFrame,
             biblio_df['link'] = np.nan
             biblio_df['links'] = np.nan
 
-    # Create the unified keywords list kws
-    if biblio_source == BiblioType.SCOPUS:
+    # Create the unified keywords lists in column 'kws'
+    if biblio_source == BiblioSource.SCOPUS:
         biblio_df['kws'] = biblio_df.apply(
             lambda row: '; '.join(sorted(set(
                 [kw.strip() for kw in row[['kws_author', 'kws_index']].str.cat(sep = ';', na_rep = '').lower().split(';') if kw.strip()]
             ))), axis=1)
             
-    elif biblio_source == BiblioType.LENS:
+    elif biblio_source == BiblioSource.LENS:
         biblio_df['kws'] = biblio_df.apply(
             lambda row: '; '.join(sorted(set(
                 [kw.strip() for kw in row[['kws_lens', 'mesh']].str.cat(sep = ';', na_rep = '').lower().split(';') if kw.strip()]
             ))), axis=1)
-    elif biblio_source == BiblioType.DIMS:
+    elif biblio_source == BiblioSource.DIMS:
         if 'mesh' in biblio_df.columns:
             # biblio_df['kws'] = biblio_df['kws'].apply(lambda x: '; '.join(sorted(x.split('; '))))
             biblio_df['kws'] = biblio_df['mesh'].apply(lambda x: '; '.join(sorted(x.lower().split('; '))) 
@@ -345,23 +539,23 @@ def normalise_biblio_entities(biblio_df: pd.DataFrame,
         else:
             biblio_df['kws'] = np.nan
 
-    # Format the authors
+    # Normalise the authors format
     if 'authors' in biblio_df.columns:
-        if biblio_source == BiblioType.SCOPUS:
+        if biblio_source == BiblioSource.SCOPUS:
             biblio_df['authors'] = biblio_df['authors'].apply(format_auth_scopus)
-        elif biblio_source == BiblioType.LENS:
+        elif biblio_source == BiblioSource.LENS:
             biblio_df['authors'] = biblio_df['authors'].apply(format_auth_lens)
-        elif biblio_source == BiblioType.DIMS:
+        elif biblio_source == BiblioSource.DIMS:
             biblio_df['authors'] = biblio_df['authors'].apply(format_auth_dims)
 
-    # Format the author affiliations
+    # Normalise the author-affiliations format
     if 'auth_affils' in biblio_df.columns:
-        if biblio_source == BiblioType.SCOPUS:
+        if biblio_source == BiblioSource.SCOPUS:
             biblio_df['auth_affils'] = biblio_df['auth_affils'].apply(format_auth_affils_scopus)
-        elif biblio_source == BiblioType.DIMS:
+        elif biblio_source == BiblioSource.DIMS:
             biblio_df['auth_affils'] = biblio_df['auth_affils'].apply(format_auth_affils_dims)
 
-    # Lower casing some other fields
+    # Convert some other entities to lower case
     if 'fos' in biblio_df.columns:
         biblio_df['fos'] = biblio_df['fos'].apply(lambda x: x.lower() if pd.notnull(x) else x) # biblio_df['fos'].str.lower()
     if 'kws_lens' in biblio_df.columns:
@@ -373,84 +567,101 @@ def normalise_biblio_entities(biblio_df: pd.DataFrame,
     if 'kws_index' in biblio_df.columns:
         biblio_df['kws_index'] = biblio_df['kws_index'].apply(lambda x: x.lower() if pd.notnull(x) else x) # biblio_df['kws_index'].fillna('').str.lower()
 
-
     return biblio_df
 
 
-def remove_title_duplicates(biblio_df: pd.DataFrame) -> Tuple[pd.DataFrame, pd.DataFrame]:
+def remove_title_duplicates(biblio_df_: pd.DataFrame) -> pd.DataFrame:
     """
-        Removing duplicate publications by title
+    Removes duplicate publications by title from `biblio_df`.
 
-        Deciding which publication to retain:
-        - If one or several duplicate publications have an abstract, remove from consideration those that don't have 
-          an abstract. Otherwise, don't remove any.
-        - If one or several of the remaining publications are from Scopus, retain the one with the latest publish_year. 
-          In case the publish_years are the same, select the one that has an abstract. If they all have an abstract, 
-          select one at random.
-        - For publications that don't have a pub_date, set it to 1 Jan of year.
-        - Keep the publication with the latest pub_date. If there are multiple publications with the same pub_date,
-          select one at random.
+    The function takes a bibliographic dataset `biblio_df` as input and performs several 
+    operations to remove duplicate titles. It returns the modified `DataFrame` after removing 
+    duplicates.
+
+    The major processing steps are:
+
+    - Group all duplicate titles
+    - For each group
+        - Merge keywords, links, bib_src, and other columns
+        - Ignore the publications with missing abstracts (unless they are all missing)
+        - If there are Scopus publications, use their title, abstract, and year
+        - Pick the publication with the latest publish date/year. If there are several,
+          then pick one at random.
+
+    The function merges:
+    
+    - bib_src (the bibliographic sources)
+    - source (the publication sources, e.g. journals, conference proceedings,...)
+    - n_cited (number of citations)
+    - fos (fields of study; only Lens)
+    - anzsrc_2020 (Australian and New Zealand Standard Research Classification)
+    - kws (keywords)
+    - links (URLs to access the publication)
+
+    Args:
+        biblio_df: The bibliographic dataset.
+
+    Returns:
+        The modified `DataFrame` after removing duplicates.
+
+    Assumptions:
+        The titles have previously been cleaned using the function `clean_biblio_df`. If not, there is a chance that duplicate titles are being missed because of differences in lower/upper case, special characters, etc.
     """
 
-    # Create a copy of the input DataFrame
-    biblio_df_copy = biblio_df.copy()
+    biblio_df = biblio_df_.copy()
 
-    logger.info(f"Number of publications before removing duplicate titles: {biblio_df_copy.shape[0]}")
+    logger.info(f"Number of publications before removing duplicate titles: {biblio_df.shape[0]}")
 
     # Convert the years to int (Lens has the year as a float, so I force missing values there to zero)
-    biblio_df_copy['year'] = biblio_df_copy['year'].fillna(0).astype(int)
+    biblio_df['year'] = biblio_df['year'].fillna(0).astype(int)
 
     # Create column pub_date if it doesn't exist (in Scopus for instance)
-    if 'pub_date' not in biblio_df_copy.columns:
-        biblio_df_copy['pub_date'] = np.nan
+    if 'pub_date' not in biblio_df.columns:
+        biblio_df['pub_date'] = np.nan
 
     # Replace the missing pub_date with 1/1/1700
-    biblio_df_copy['pub_date_dummy'] = biblio_df_copy['pub_date'].fillna(pd.to_datetime('01-01-1700', format = '%d-%m-%Y'))
-
-    # Replace NaT values with original datetimes
-    # mask = biblio_df_copy['pub_date_dummy'].isna()
-    # biblio_df_copy.loc[mask, 'pub_date_dummy'] = pd.to_datetime(biblio_df_copy.loc[mask, 'pub_date_dummy'])
+    biblio_df['pub_date_dummy'] = biblio_df['pub_date'].fillna(pd.to_datetime('01-01-1700', format = '%d-%m-%Y'))
 
     # Remove entries where no date information is provided
-    biblio_df_copy = biblio_df_copy.loc[
-        ((biblio_df_copy['bib_src'] == 'scopus') & (biblio_df_copy['year'] != 0)) |
-        ((biblio_df_copy['bib_src'] != 'scopus') & ((biblio_df_copy['year'] != 0) | (biblio_df_copy['pub_date_dummy'] != pd.to_datetime('01-01-1700', format = '%d-%m-%Y'))))
-    ]
+    # biblio_df = biblio_df.loc[
+    #     ((biblio_df['bib_src'] == 'scopus') & (biblio_df['year'] != 0)) |
+    #     ((biblio_df['bib_src'] != 'scopus') & ((biblio_df['year'] != 0) | (biblio_df['pub_date_dummy'] != pd.to_datetime('01-01-1700', format = '%d-%m-%Y'))))
+    # ]
 
-    if not biblio_df_copy.empty:
+    if not biblio_df.empty:
+
         # Create a pub_date of 01/01/year for all missing pub_dates
-        biblio_df_copy['pub_date_dummy'] = biblio_df_copy['pub_date']
-        biblio_df_copy['pub_date_dummy'].fillna(pd.to_datetime('01-01-' + biblio_df_copy.loc[biblio_df_copy['year'] != 0, 'year'].astype(int).astype(str), format = '%d-%m-%Y'), inplace=True)
+        biblio_df['pub_date_dummy'] = biblio_df['pub_date']
+        biblio_df['pub_date_dummy'].fillna(pd.to_datetime('01-01-' + biblio_df.loc[biblio_df['year'] != 0, 'year'].astype(int).astype(str), format = '%d-%m-%Y'), inplace=True)
 
         # Convert all 'pub_date_dummy' values to datetime
-        biblio_df_copy['pub_date_dummy'] = pd.to_datetime(biblio_df_copy['pub_date_dummy'], errors = 'coerce')
+        biblio_df['pub_date_dummy'] = pd.to_datetime(biblio_df['pub_date_dummy'], errors = 'coerce')
 
         # Extract missing years from pub_date
-        if (biblio_df_copy['year'] == 0).any():
-            biblio_df_copy.loc[biblio_df_copy['year'] == 0, 'year'] = \
-                biblio_df_copy.loc[biblio_df_copy['year'] == 0, 'pub_date_dummy'].dt.year
+        if (biblio_df['year'] == 0).any():
+            biblio_df.loc[biblio_df['year'] == 0, 'year'] = \
+                biblio_df.loc[biblio_df['year'] == 0, 'pub_date_dummy'].dt.year
 
     # Create new columns for merged values
-    biblio_df_copy['bib_srcs'] = biblio_df_copy['bib_src']
+    biblio_df['bib_srcs'] = biblio_df['bib_src']
 
-    if 'source' in biblio_df_copy:
-        biblio_df_copy['sources'] = np.nan
+    if 'source' in biblio_df:
+        biblio_df['sources'] = np.nan
     
     # Dataframe for duplicate titles
     dup_df = pd.DataFrame()
 
     # Group the rows by the titles and loop over the groups
-    # for _, group in biblio_df_copy.groupby('title'):
-    for idx, (_, group) in enumerate(biblio_df_copy.groupby('title')):
+    for idx, (_, group) in enumerate(biblio_df.groupby('title')):
 
         # Create a new column 'sources' that has all the source titles
         if 'source' in group.columns:
             unique_src = group['source'].dropna().str.split(';').explode().str.strip().unique()
             group['sources'] = '; '.join(unique_src)
-            biblio_df_copy.loc[group.index, 'sources'] = group['source']
+            biblio_df.loc[group.index, 'sources'] = group['source']
 
         if(idx % 1 == 0):
-            print(f'Group: {idx} ', end = '\r')
+            print(f'Duplicate group: #{idx} ', end = '\r')
 
         if len(group) > 1:
             dup_df = pd.concat([dup_df, group])
@@ -462,36 +673,36 @@ def remove_title_duplicates(biblio_df: pd.DataFrame) -> Tuple[pd.DataFrame, pd.D
             if 'n_cited' in group.columns:
                 sum_n_cited = group['n_cited'].sum()
                 group['n_cited'] = sum_n_cited
-                biblio_df_copy.update(group[['n_cited']])
+                biblio_df.update(group[['n_cited']])
             
             # Merge the values in the fos column
             if 'fos' in group.columns:
                 unique_fos = group['fos'].dropna().str.split(';').explode().str.strip().unique()
                 group['fos'] = '; '.join(unique_fos)
-                biblio_df_copy.update(group[['fos']])
+                biblio_df.update(group[['fos']])
 
             # Merge the values in the anzsrc_2020 column
             if 'anzsrc_2020' in group.columns:
                 unique_anzsrc = group['anzsrc_2020'].dropna().str.split(';').explode().str.strip().unique()
                 group['anzsrc_2020'] = '; '.join(unique_anzsrc)
-                biblio_df_copy.update(group[['anzsrc_2020']])
+                biblio_df.update(group[['anzsrc_2020']])
 
             # Merge the values in the keywords (kws) column
             if 'kws' in group.columns:
                 unique_kws = group['kws'].str.lower().dropna().str.split(';').explode().str.strip().unique()
                 group['kws'] = '; '.join(unique_kws)
-                biblio_df_copy.update(group[['kws']])
+                biblio_df.update(group[['kws']])
 
             # Create a new column 'links' that has all the URLs separate with a space
             if 'links' in group.columns:
                 unique_links = group['links'].dropna().str.split(' ').explode().str.strip().unique()
                 group['links'] = ' '.join(unique_links)
-                biblio_df_copy.update(group[['links']])
+                biblio_df.update(group[['links']])
 
             # Create a new column 'bib_srcs' that has all the bib_src strings of the duplicate titles
             unique_bib_src = group['bib_src'].dropna().str.split(',').explode().str.strip().unique()
             group['bib_srcs'] = ', '.join(unique_bib_src)
-            biblio_df_copy.update(group[['bib_srcs']])
+            biblio_df.update(group[['bib_srcs']])
 
             # Pick an author affiliation string
             if 'author_affils' in group.columns:
@@ -511,7 +722,7 @@ def remove_title_duplicates(biblio_df: pd.DataFrame) -> Tuple[pd.DataFrame, pd.D
             if group['abstract'].notna().any():
                 items_to_drop = group[duplicates & group['abstract'].isna()]    # drops all items except the item_to_keep
                 group = group.drop(items_to_drop.index)
-                biblio_df_copy = biblio_df_copy.drop(items_to_drop.index)
+                biblio_df = biblio_df.drop(items_to_drop.index)
 
             # Check if any publication in the group has bib_src = 'scopus'
             if 'scopus' in group['bib_src'].values:
@@ -535,12 +746,12 @@ def remove_title_duplicates(biblio_df: pd.DataFrame) -> Tuple[pd.DataFrame, pd.D
                     else:
                         item_to_keep = latest_scopus
 
-                    biblio_df_copy = biblio_df_copy.loc[biblio_df_copy['bib_src'] == 'scopus']
+                    biblio_df = biblio_df.loc[biblio_df['bib_src'] == 'scopus']
                     group = group.loc[group['bib_src'] == 'scopus']
 
                     items_to_drop = scopus.drop(item_to_keep.index) # drops all items except the item_to_keep
                     group = group.drop(items_to_drop.index)
-                    biblio_df_copy = biblio_df_copy.drop(items_to_drop.index)
+                    biblio_df = biblio_df.drop(items_to_drop.index)
 
             # If there are several publications left, select the one with the latest
             # pub_date. If they are all the same, select one randomly.
@@ -549,8 +760,6 @@ def remove_title_duplicates(biblio_df: pd.DataFrame) -> Tuple[pd.DataFrame, pd.D
                 # If there are multiple records with the same largest pub_date, first check whether 
                 # there is one that has a source. If there are multiple, then pick one at random
                 if 'source' in group.columns and group['source'].notna().any():
-                    # group = group.dropna(subset = ['source'])
-                    # idxmax_group = group.loc[group['pub_date_dummy'] == group['pub_date_dummy'].max()]
                     idxmax_group = group[group['source'].notna()]
                 else:
                     idxmax_group = group.loc[group['pub_date_dummy'] == group['pub_date_dummy'].max()]
@@ -561,28 +770,54 @@ def remove_title_duplicates(biblio_df: pd.DataFrame) -> Tuple[pd.DataFrame, pd.D
                 # Drop all rows except for the one with the largest pub_date
                 indices_to_drop = group.index.difference([random_idx])
                 group = group.drop(indices_to_drop)
-                biblio_df_copy = biblio_df_copy.drop(indices_to_drop)
+                biblio_df = biblio_df.drop(indices_to_drop)
 
         else:
             # Copy single values to new columns
-            biblio_df_copy['bib_srcs'] = biblio_df_copy['bib_src']
+            biblio_df['bib_srcs'] = biblio_df['bib_src']
 
     # Remove the dummy column
-    biblio_df_copy = biblio_df_copy.drop(['pub_date_dummy'], axis = 1)
+    biblio_df = biblio_df.drop(['pub_date_dummy'], axis = 1)
 
     # Change n_cited to int
-    if 'n_cited' in biblio_df_copy.columns:
-        biblio_df_copy['n_cited'] = biblio_df_copy['n_cited'].fillna(0)
-        biblio_df_copy['n_cited'] = biblio_df_copy['n_cited'].astype(int)
+    if 'n_cited' in biblio_df.columns:
+        biblio_df['n_cited'] = biblio_df['n_cited'].fillna(0)
+        biblio_df['n_cited'] = biblio_df['n_cited'].astype(int)
 
-    logger.info(f"Number of publications after removing duplicate titles: {biblio_df_copy.shape[0]}")
+    logger.info(f"Number of publications after removing duplicate titles: {biblio_df.shape[0]}")
 
-    return biblio_df_copy, dup_df
+    return biblio_df
 
-counter = 0
 
-def clean_biblio_df(biblio_df: pd.DataFrame) -> pd.DataFrame:
-    global counter
+def clean_biblio_df(biblio_df_: pd.DataFrame) -> pd.DataFrame:
+    """
+    Cleans the bibliographic dataset `biblio_df` by processing the publication titles
+    and abstracts to remove noise and standardise formatting.
+
+    The function removes publications with empty titles, NaN titles, and titles containing 
+    specific keywords such as 'conference', 'workshop', 'proceedings'. It converts titles to 
+    lowercase, removes HTML tags, non-alphabetic characters (except specific punctuation and 
+    Greek letters), excess whitespace, and common terms from the beginning of titles.
+
+    For abstracts, the function replaces NaN values with empty strings, removes HTML tags, 
+    non-alphabetic characters (except specific punctuation and Greek letters), excess whitespace, 
+    and common terms used in abstracts of publications in some disciplines such as 'background', 
+    'objectives', 'results' etc. It also removes duplicate publications using the function 
+    `remove_title_duplicates` and generates standard publication IDs.
+
+    Args:
+        biblio_df: 
+            Input DataFrame containing bibliographic information.
+
+    Returns:
+        Cleaned bibligraphic dataset with standardized publication titles, abstracts, and new publication IDs.
+
+    Raises:
+        None.
+
+    """
+
+    biblio_df = biblio_df_.copy()
 
     logger.info(f'Number of publications in the input biblio_df: {len(biblio_df)}')
 
@@ -688,19 +923,9 @@ def clean_biblio_df(biblio_df: pd.DataFrame) -> pd.DataFrame:
 
     """
         Removing duplicate publications
-
-        Deciding which publication to retain:
-        - If one or several duplicate publications have an abstract, remove from consideration those that don't have 
-          an abstract.
-        - If one or several of the publications are from Scopus, retain the one with the latest publish_year. In case
-          the publish_years are the same, select the one that has an abstract. If they all have an abstract, select one
-          at random.
-        - For publications that don't have a publish_date, set it to 1 Jan of publish_year.
-        - Keep the publication with the latest publish_date. If there are multiple publications with the same publish_date,
-          select one at random.
     """
 
-    biblio_df, _ = remove_title_duplicates(biblio_df)
+    biblio_df = remove_title_duplicates(biblio_df)
     
 
     # Convert year to integer and replace nan with zeros (in Lens, year is a float)
@@ -718,6 +943,7 @@ def clean_biblio_df(biblio_df: pd.DataFrame) -> pd.DataFrame:
     biblio_df = biblio_df.sort_values(by = ['year', 'title'], ascending = [False, True], na_position='last')
 
     # Generate the record IDs
+    global counter
     counter = 0
 
     def generate_id(row):
@@ -728,7 +954,7 @@ def clean_biblio_df(biblio_df: pd.DataFrame) -> pd.DataFrame:
             if "no author name" in row['authors'].lower():
                 author = 'Anonymous'
             else:
-                author = row['authors'].split()[0].strip()
+                author = row['authors'].split()[0].strip().strip(',')
         else:
             author = 'Anonymous'
 
@@ -737,13 +963,80 @@ def clean_biblio_df(biblio_df: pd.DataFrame) -> pd.DataFrame:
 
         return id
     
+    # Make sure the index is properly set (starts at 0, then at unit increments)
     biblio_df.reset_index(drop = True, inplace = True)
+
+    # Generate the unique identifiers for the publications
     biblio_df['id'] = biblio_df.apply(generate_id, axis = 1)
     
     return biblio_df
 
 
 def generate_pandas_query_string(query_str: str) -> str:
+    """
+    Generates a query string that can be used by the pandas `query` function  based on 
+    the input `query_str`.
+
+    Pandas query strings can be cumbersome, for instance when string functions need to 
+    be used on columns for partial/substring matches. You then need to use strings like
+    `~(title.str.contains(r'(?=.*systemic risk)^(?=.*\\bequity\\b)', case = False, regex = True))`,
+    which are unwieldy to create.
+
+    This function allows queries to be written in a simplified form that covers most needs
+    for column filtering in bibliographic `DataFrames`. Here are some query examples:
+    
+    - filter_query = "systemic in* title"
+    - filter_query = "public in* title | extreme in* abstract"
+    - filter_query = "013 in* lens_id"
+    - filter_query = "'exists' in* abstract"
+    - filter_query = "['modules', extreme] in* title"
+    - filter_query = "extreme in* [title, abstract]"
+    - filter_query = "[[systemic, 'equity']] in* title"
+    - filter_query = "[[procyc, 'module']] in* [title, abstract]"
+    - filter_query = "['modules', extreme] in* [title, abstract]"
+    - filter_query = "~systemic in* title"
+    - filter_query = "~(~public in* title | extreme in* abstract)"
+    - filter_query = "~'exists' in* abstract"
+    - filter_query = "~['modules', extreme] in* title"
+    - filter_query = "~[[systemic risk, 'equity']] in* title"
+    - filter_query = "(risk in* title) & (year == 2014)"
+
+    The syntax rules are:
+
+    - In addition to the pandas query() syntax, there is an additional binary operator `in*`.
+    - The general syntax is `STRINGS in* COLUMNS`. This searches for (sub)strings in the
+      text of the specified columns.
+    - STRINGS:
+        - If you put single or double quotes around a string, it will search for a full 
+        word match. Otherwise it will search for partial matches.
+        - If you surround multiple strings with single square brackets, it will search 
+          for *any* matches ('or' operation). If you use double square brackets, it will
+          search for *all* matches ('and' operation).
+        - You can use the  ('not') operator inside the square brackets.
+    - COLUMNS:
+        - You can use single brackets to search in multiple columns for *any* matches ('or' 
+          operation). So, `risk in* [title, abstract]` searches for the substring "risk" 
+          in columns 'title' and 'abstract' and produces a match when it finds "risk" in 
+          the value title or in the abstract.
+        - Double brackets are not allowed for columns. You can achieve this by using `&``
+          outside the `in*` operation.
+        - The ~ ('not') operator is not allowed for columns.
+
+    - Outside the `in*` binary operations, you can use the query() operators such as &, |, ~~
+      in the normal way. See the last example above.
+
+    Args:
+        query_str: Input query string to be modified.
+
+    Returns:
+        Modified query string that the Pandas `query` function understands.
+
+    Raises:
+        ValueError: If the not operator '~' is used inside square brackets '[...]' or applied to the columns using 'in*'.
+
+    """
+
+    # Define the characters to split query string
     split_at = r"()|&~"
     pad = r"|&~"
     split_at_escaped = re.escape(split_at)
@@ -754,6 +1047,7 @@ def generate_pandas_query_string(query_str: str) -> str:
     if re.search(r'in\*\s*~', query_str):
         raise ValueError(f"Applying the not operator '~' on the columns is not allowed")
     
+    # Split the query string into parts at the split_at characters
     pattern = fr"(?=[{split_at_escaped}])|(?<=[{split_at_escaped}])"
     query_parts = re.split(pattern, query_str)
     query_parts = [item.strip() for item in query_parts if item.strip()]
@@ -763,43 +1057,49 @@ def generate_pandas_query_string(query_str: str) -> str:
     for query_part in query_parts:
 
         if 'in*' in query_part:
+
+            # Split the 'in*' part into search string and column string
             in_parts = query_part.split('in*')
             search_str = in_parts[0].strip()
             col_str = in_parts[1].strip()                
 
-            match_and = re.match(r"^\[\[.*\]\]$", search_str)
-            match_or = re.match(r"^\[.*\]$", search_str)
-            match = match_and if match_and else (match_or if match_or else False)
+            # Check if multiple columns are specified for searching
             match_col = re.match(r"^\[.*\]$", col_str)
 
-            if match_col:   # multiple columns to search in
+            if match_col:
                 matched_col_lst = [string.strip() for string in match_col.group().replace('[', '').replace(']', '').split(',')]
             else:
                 matched_col_lst = [col_str]
 
-            if match:   # multiple search strings
+            # Check for multiple search strings and the operation type ('and' or 'or')
+            match_and = re.match(r"^\[\[.*\]\]$", search_str)
+            match_or = re.match(r"^\[.*\]$", search_str)
+            match = match_and if match_and else (match_or if match_or else False)
+
+            if match:
+                # Mutiple search terms
                 matched_string = match.group().strip().replace('[', '').replace(']', '')
-
-                # if ... multiple columns in which to search
-
-                # else ...
                 search_str_lst = [string.strip() for string in matched_string.split(',')]
                 first_col_str = True
                 subst_query = ""
 
-                for col_str in matched_col_lst:
+                for col_str in matched_col_lst: # one or several columns
+
+                    # Build the query string for multiple search terms and one or multiple columns
                     subst_query += f"{' | ' if not first_col_str else ''}({col_str}.str.contains(r'"
                     first_search_str = True
 
                     for search_str in search_str_lst:
-                        if re.match(r"^['\"].*['\"]$", search_str):   # single search string, full word match enforced
+                        if re.match(r"^['\"].*['\"]$", search_str):
+                            # Single search string with full word match enforced
                             search_str = search_str.strip().replace("'", "").replace('"', "")
                             if match_and:
                                 subst_query += f"{'^' if not first_search_str else ''}(?=.*\\b{search_str}\\b)"
                             else:
                                 subst_query += f"{'|' if not first_search_str else ''}\\b{search_str}\\b"
                             first_search_str = False
-                        else:   # single search string, partial word match allowed
+                        else:
+                            # Single search string with partial word match allowed
                             search_str = search_str.strip()
                             if match_and:
                                 subst_query += f"{'^' if not first_search_str else ''}(?=.*{search_str})"
@@ -812,17 +1112,21 @@ def generate_pandas_query_string(query_str: str) -> str:
 
                 modified_query_parts.append(subst_query)
             else:
+                # Single search term
                 first_col_str = True
                 subst_query = ""
 
-                for col_str in matched_col_lst:
-                    # subst_query += f"{' | ' if not first_col_str else ''}({col_str}.str.contains(r'^"
+                for col_str in matched_col_lst: # one or several columns
+ 
+                    # Build the query string for multiple search terms and one or multiple columns
                     subst_query += f"{' | ' if not first_col_str else '('}"
 
-                    if re.match(r"^['\"].*['\"]$", search_str):   # single search string, full word match enforced
+                    if re.match(r"^['\"].*['\"]$", search_str):
+                        # Single search string with full word match enforced
                         search_str = search_str.strip().replace("'", "").replace('"', "")
                         subst_query += f"{col_str}.str.contains(r'\\b{search_str}\\b', case = False, regex = True)"
-                    else:   # single search string, partial word match allowed
+                    else:
+                        # Single search string with partial word match allowed
                         subst_query += f"{col_str}.str.contains('{search_str}', case = False, regex = True)"
                     
                     first_col_str = False
@@ -832,9 +1136,13 @@ def generate_pandas_query_string(query_str: str) -> str:
         else:
             modified_query_parts.append(query_part)
 
+    # Add padding spaces around operators
     modified_query_parts = [s if s not in pad else f" {s} " for s in modified_query_parts]
 
-    return ''.join(modified_query_parts)
+    # Generate the query string from the individual parts
+    modified_query = ''.join(modified_query_parts)
+
+    return modified_query
 
 
 def filter_biblio_df(biblio_df: pd.DataFrame, 

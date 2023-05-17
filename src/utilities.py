@@ -16,11 +16,13 @@ def get_root_dir() -> Path:
 
     Globals:
         project_root_markers (List[str]): A list of file and directory names to be checked as markers. 
-        Defined in config.py.
+        Defined in `config.py`.
 
     Returns:
         A string representing the absolute path to the root folder.
-        None is returned if the root folder cannot be determined.
+
+    Raises:
+        ValueError: If none of the marker files could be found.
     """
 
     current_dir = Path(__file__).resolve().parent
@@ -43,7 +45,8 @@ def get_data_dir(biblio_project_dir_name: str) -> Path:
     Returns the path to the data directory of a bibliometric project.
 
     Args:
-        biblio_project_dir: The name of the bibliometric project directory.
+        biblio_project_dir: 
+            The name of the bibliometric project directory.
 
     Returns:
         A Path object representing the path to the bibliometric project's data directory.
@@ -70,7 +73,8 @@ def get_model_dir(biblio_project_dir_name: str) -> Path:
     Returns the path to the model directory of a bibliometric project.
 
     Args:
-        biblio_project_dir: The name of the bibliometric project directory.
+        biblio_project_dir: 
+            The name of the bibliometric project directory.
 
     Returns:
         A Path object representing the path to the bibliometric project's model directory.
@@ -99,22 +103,23 @@ def create_biblio_project_folders(biblio_project_dir_name: str) -> None:
     A bibliometric project has bibliographic data and models that are stored in
     the data and models directories respectively. The CSV files and topic models
     for a literature review could for instance be stored in its own bibliometric
-    project direcrtory 'biblio_project_dir_name', in the 'data' and 'model'
+    project directory `biblio_project_dir_name`, in the `data` and `models`
     subdirectories.
 
     The following folder structure is created by this function:
 
-    - root_dir/
-        - data/
-            - biblio_project_dir_name/
-                - raw/
-                - processed/
-                - results/
-        - models/
-            - biblio_project_dir_name/
+        - root_dir/
+            - data/
+                - biblio_project_dir_name/
+                    - raw/
+                    - processed/
+                    - results/
+            - models/
+                - biblio_project_dir_name/
 
     Args:
-        biblio_project_dir_name (str): The name of the biblio project directory.
+        biblio_project_dir_name: 
+            The name of the biblio project directory.
 
     Returns:
         None
@@ -140,23 +145,26 @@ def create_biblio_project_folders(biblio_project_dir_name: str) -> None:
     return
 
 
-def check_output_dir_and_ext(biblio_project_dir_name: str, 
-                      output_file: Optional[str] = None,
-                      output_dir: Optional[str] = None,
-                      file_extensions: Optional[List[str]] = None
-                      ) -> None:
+def validate_output_dir_and_ext(biblio_project_dir_name: str, 
+                                output_file: str,
+                                output_dir: str,
+                                file_extensions: List[str]
+                                ) -> None:
     """
     Checks that the target directory exists and that output_file has a valid extension.
 
-    If output_file is provided, check that it ends in .csv or .xlsx and that there is 
-    an output_dir. If an output_dir is provided, check if it exists in the directory 
-    path of root_dir/data_root_dir/project/output_dir.
-
+    If output_file is provided, check that it ends in `.csv` or `.xlsx` and that the directory 
+    `output_dir` exists on the path `root_dir/data_root_dir/biblio_project_dir_name/output_dir`.
+    
     Args:
-        biblio_project_dir_name: The name of the bibliometric project directory.
-        output_file: The name of the output file (optional). 
-        output_dir (optional): The name of the output directory (optional).
-        file_extensions: List of valid file extensions (optional).
+        biblio_project_dir_name: 
+            The name of the bibliometric project directory.
+        output_file: 
+            The name of the output file. 
+        output_dir: 
+            The name of the output directory.
+        file_extensions: 
+            List of valid file extensions.
 
     Raises: 
         ValueError: If any of the conditions described above are not met.
@@ -167,19 +175,15 @@ def check_output_dir_and_ext(biblio_project_dir_name: str,
 
     root_dir = get_root_dir()
 
-    # If output_file is provided, check that output_dir is also provided
-    if output_file:
-        if output_dir:
-            output_path = Path(root_dir, data_root_dir, biblio_project_dir_name, output_dir)
-            if not output_path.is_dir():
-                raise ValueError(f"Output directory does not exist: {output_path}")
-        else:
-            raise ValueError(f"Since you have provided an output file name, you also need to provide an output directory name")
-        
-        # Check if the output_file has a valid extension
-        if file_extensions and not Path(output_file).suffix in file_extensions:
-            ext_str = ', '.join(file_extensions[:-1]) + f" or {file_extensions[-1]}"
-            raise ValueError(f"The file name '{output_file}' needs to end in {ext_str}")
+    # Check that the output_dir exists
+    output_path = Path(root_dir, data_root_dir, biblio_project_dir_name, output_dir)
+    if not output_path.is_dir():
+        raise ValueError(f"Output directory does not exist: {output_path}")
+    
+    # Check if the output_file has a valid extension
+    if file_extensions and not Path(output_file).suffix in file_extensions:
+        ext_str = ', '.join(file_extensions[:-1]) + f" or {file_extensions[-1]}"
+        raise ValueError(f"The file name '{output_file}' needs to end in {ext_str}")
 
 
 def write_df(biblio_df: pd.DataFrame,
@@ -188,28 +192,33 @@ def write_df(biblio_df: pd.DataFrame,
              output_file: str
              ) -> None:
     """
-    Write a bibliographic dataset to a file in output_dir in the bibliometric project.
+    Write a bibliographic dataset to a file in `output_dir` in the bibliometric project.
 
     Args:
-        biblio_df: The bibliographic dataset (e.g. Scopus, Lens, Dimensions, Biblio,...).
-        biblio_project_dir_name: The name of the bibliometric project directory.
-        output_dir:  The name of the output directory.
-        output_file: The name of the output file.
+        biblio_df: 
+            The bibliographic dataset (e.g. Scopus, Lens, Dimensions, Biblio,...).
+        biblio_project_dir_name: 
+            The name of the bibliometric project directory.
+        output_dir:  
+            The name of the output directory.
+        output_file: 
+            The name of the output file.
 
     Raises:
-        ValueError: If the output_file parameter does not have the extension .csv or .xlsx.
+        ValueError: If the `output_file` parameter does not have the extension .csv or .xlsx.
 
     Returns:
         None
-
-    TODO: Add timestamping
     """
-
+    
+    # TODO:
+    #   - Add timestamping
+    
     allowed_file_extensions = ['.csv', '.xlsx']
     root_dir = get_root_dir()
 
     # Check if the output_file parameter has a valid extension and if the output directory exists
-    check_output_dir_and_ext(biblio_project_dir_name = biblio_project_dir_name,
+    validate_output_dir_and_ext(biblio_project_dir_name = biblio_project_dir_name,
                              output_dir = output_dir,
                              output_file = output_file,
                              file_extensions = allowed_file_extensions)
@@ -230,21 +239,21 @@ def write_df(biblio_df: pd.DataFrame,
 def read_biblio_csv_files_to_df(biblio_project_dir_name: str, 
                                 input_dir: str, 
                                 csv_file_names: Union[str, List[str]] = '',
-                                biblio_source: BiblioType = BiblioType.UNDEFINED,
+                                biblio_source: BiblioSource = BiblioSource.UNDEFINED,
                                 n_rows: Optional[int] = None,
                                 ) -> pd.DataFrame:
     """
-    Read bibliographic datasets from CSV files and store in a DataFrame.
+    Read bibliographic datasets from CSV files and store in a `DataFrame`.
 
     The function can read single files, multiple files, and all files in a directory:
 
-    - Single file: provide a file name with the extension .csv for csv_file_names.
+    - Single file: provide a file name with the extension `.csv` for `csv_file_names`.
     - Multiple files, method 1: provide a list with file names.
-    - Multiple files method 2: don't specify csv_file_names. I this case, it will
-                               read all the files in the input_dir.
+    - Multiple files method 2: don't specify `csv_file_names`. I this case, it will
+                               read all the files in the `input_dir`.
     
     If the files are in different directories, this can be specified as a path in 
-    the csv_file_names string(s).
+    the `csv_file_names` string(s).
 
     Args:
         biblio_project_dir_name: 
@@ -255,21 +264,20 @@ def read_biblio_csv_files_to_df(biblio_project_dir_name: str,
             The name(s) of the CSV file(s) to read. If empty, all CSV files 
             in the input directory are read.
         biblio_source: 
-            The type of bibliographic data being read (SCOPUS, LENS, DIMS, or BIBLIO).
-            BIBLIO refers to the normalised bibliographic dataset format used
+            The type of bibliographic data being read (`SCOPUS`, `LENS`, `DIMS`, or `BIBLIO`).
+            `BIBLIO` refers to the normalised bibliographic dataset format used
             in BiblioKeywords.
         n_rows:
             The maximum number of rows to read from each CSV file. Reads all rows if omitted.
 
     Returns:
-        pd.DataFrame:
-            The merged DataFrame containing the bibliographic data.
+        The merged DataFrame containing the bibliographic data.
 
     Raises:
         ValueError:
             - If the input directory does not exist.
-            - If the biblio_type parameter is set to BiblioType.UNDEFINED.
-            - If the biblio_type parameter is not one of the supported types: SCOPUS, LENS, DIMS, or BIBLIO.
+            - If the `biblio_type` parameter is set to `BiblioType.UNDEFINED`.
+            - If the `biblio_type` parameter is not one of the supported types: `SCOPUS`, `LENS`, `DIMS`, or `BIBLIO`.
     """
     
     root_dir = get_root_dir()
@@ -279,11 +287,11 @@ def read_biblio_csv_files_to_df(biblio_project_dir_name: str,
     if not input_dir_path.exists():
         raise ValueError(f"The folder {input_dir_path} does not exist")
     
-    if biblio_source == BiblioType.UNDEFINED:
+    if biblio_source == BiblioSource.UNDEFINED:
         raise ValueError(f"The parameter biblio_source needs to be set to: SCOPUS, LENS, DIMS, OR BIBLIO")
         
     # Skip the first row in a Dimensions CSV file, which contains details about the search
-    skip_rows = 1 if biblio_source == BiblioType.DIMS else 0
+    skip_rows = 1 if biblio_source == BiblioSource.DIMS else 0
 
     # Convert single file name to list
     if isinstance(csv_file_names, str):
@@ -315,13 +323,13 @@ def read_biblio_csv_files_to_df(biblio_project_dir_name: str,
         biblio_df = biblio_df.head(n_rows)
 
     # Create the bib_src column and set to the biblio_type
-    if biblio_source == BiblioType.SCOPUS:
+    if biblio_source == BiblioSource.SCOPUS:
         biblio_df['bib_src'] = 'scopus'
-    elif biblio_source == BiblioType.LENS:
+    elif biblio_source == BiblioSource.LENS:
         biblio_df['bib_src'] = 'lens'
-    elif biblio_source == BiblioType.DIMS:
+    elif biblio_source == BiblioSource.DIMS:
         biblio_df['bib_src'] = 'dims'
-    elif biblio_source == BiblioType.BIBLIO:
+    elif biblio_source == BiblioSource.BIBLIO:
         biblio_df['bib_src'] = 'biblio'
     else:
         raise ValueError(f"The parameter biblio_type needs to be set to: SCOPUS, LENS, DIMS, OR BIBLIO")

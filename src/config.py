@@ -12,7 +12,7 @@ model_root_dir = 'models'
 """
 
 
-class BiblioType(Enum):
+class BiblioSource(Enum):
     SCOPUS = 1
     LENS = 2
     DIMS = 3

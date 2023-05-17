@@ -12,7 +12,7 @@ biblio_df = read_and_merge_csv_files(project = model_project_dir,
                                      input_dir = 'processed',
                                      is_dimensions = False)
 
-biblio_df = rename_and_retain_cols_biblio_df(biblio_df = biblio_df,
+biblio_df = modify_cols_biblio_df(biblio_df = biblio_df,
                               reshape_filter = ['abstract'])
 
 write_df(biblio_df = biblio_df,

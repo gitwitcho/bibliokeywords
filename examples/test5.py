@@ -10,22 +10,22 @@ root_dir = Path(__file__).resolve().parents[1]
 
 scopus_df = read_and_merge_csv_files(project = model_project_dir, 
                                      input_dir = 'raw/scopus',
-                                     biblio_type = BiblioType.SCOPUS,
+                                     biblio_type = BiblioSource.SCOPUS,
                                      n_rows = 3)
 
 lens_df = read_and_merge_csv_files(project = model_project_dir, 
                                    input_dir = 'raw/lens',
-                                   biblio_type = BiblioType.LENS,
+                                   biblio_type = BiblioSource.LENS,
                                    n_rows = 3)
 
 dims_df = read_and_merge_csv_files(project = model_project_dir, 
                                    input_dir = 'raw/dimensions',
-                                   biblio_type = BiblioType.DIMS,
+                                   biblio_type = BiblioSource.DIMS,
                                    n_rows = 3)
 
-scopus_df = rename_and_retain_cols_biblio_df(biblio_df = scopus_df, reshape_base = Reshape.SCOPUS_COMPACT)
-lens_df = rename_and_retain_cols_biblio_df(biblio_df = lens_df, reshape_base = Reshape.LENS_COMPACT)
-dims_df = rename_and_retain_cols_biblio_df(biblio_df = dims_df, reshape_base = Reshape.DIMS_COMPACT)
+scopus_df = modify_cols_biblio_df(biblio_df = scopus_df, reshape_base = Reshape.SCOPUS_COMPACT)
+lens_df = modify_cols_biblio_df(biblio_df = lens_df, reshape_base = Reshape.LENS_COMPACT)
+dims_df = modify_cols_biblio_df(biblio_df = dims_df, reshape_base = Reshape.DIMS_COMPACT)
 
 scopus_df = normalise_biblio_entities(biblio_df = scopus_df)
 lens_df = normalise_biblio_entities(biblio_df = lens_df)

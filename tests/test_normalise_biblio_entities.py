@@ -6,7 +6,7 @@ sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..',
 import pandas as pd
 import numpy as np
 
-from transform import normalise_biblio_entities, BiblioType
+from transform import normalise_biblio_entities, BiblioSource
 
 
 def test_normalise_biblio_entities():
@@ -33,7 +33,7 @@ def test_normalise_biblio_entities():
         'links': ['https://dx.doi.org/10.1016/j.jfin.2020.08.011', 'https://dx.doi.org/10.1016/j.jbankfin.2019.103444', np.nan],
         'kws': ['banking; finance', 'banking', 'economics; finance']
     })
-    output_df = normalise_biblio_entities(df, BiblioType.SCOPUS)
+    output_df = normalise_biblio_entities(df, BiblioSource.SCOPUS)
     assert 'link' in output_df.columns
     assert 'links' in output_df.columns
     assert 'kws' in output_df.columns
@@ -59,7 +59,7 @@ def test_normalise_biblio_entities():
         'links': ['https://dx.doi.org/10.1016/j.jfin.2020.08.011 https://dx.doi.org/10.1016/j.jbankfin.2019.103444', np.nan, np.nan],
         'kws': ['banking; finance', 'banking; finance', 'economics; finance']
     })
-    output_df = normalise_biblio_entities(df, BiblioType.LENS)
+    output_df = normalise_biblio_entities(df, BiblioSource.LENS)
     assert 'link' in output_df.columns
     assert 'links' in output_df.columns
     assert 'kws' in output_df.columns
@@ -87,7 +87,7 @@ def test_normalise_biblio_entities():
         'links': ['https://dx.doi.org/10.1016/j.jfin.2020.08.011', 'https://dx.doi.org/10.1016/j.jbankfin.2019.103444', np.nan],
         'kws': [np.nan, 'economics; finance; medicine', 'engineering']
    })
-    output_df = normalise_biblio_entities(df, BiblioType.DIMS)
+    output_df = normalise_biblio_entities(df, BiblioSource.DIMS)
     assert 'link' in output_df.columns
     assert 'links' in output_df.columns
     assert 'kws' in output_df.columns

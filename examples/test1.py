@@ -15,12 +15,12 @@ biblio_df = read_and_merge_csv_files(project = model_project_dir,
                                      is_dimensions = False,
                                      n_rows = 100)
 
-biblio_df = rename_and_retain_cols_biblio_df(biblio_df = biblio_df, 
+biblio_df = modify_cols_biblio_df(biblio_df = biblio_df, 
                               reshape_base = Reshape.LENS_COMPACT,
                               reshape_filter = ['title', 'year', 'abstract'])
 
 biblio_df = clean_biblio_df(biblio_df = biblio_df,
-                            biblio_type = BiblioType.LENS)
+                            biblio_type = BiblioSource.LENS)
 
 sys.exit()
 

@@ -1,4 +1,7 @@
 import sys
+import os
+
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..', 'src')))
 
 from pathlib import Path
 from openpyxl import Workbook
@@ -65,14 +68,14 @@ excel_params = {
 # filter_query = "~['modules', extreme] in* title"
 filter_query = "~[[systemic risk, 'equity']] in* title"
 
-# filter_pandas_query = generate_pandas_query_string(filter_query)
+filter_pandas_query = generate_pandas_query_string(filter_query)
 
 biblio_df = read_and_merge_csv_files(project = data_project, 
                                     input_dir = 'raw/lens',
-                                    biblio_type = BiblioType.LENS,
+                                    biblio_type = BiblioSource.LENS,
                                     n_rows = 3)
 
-biblio_df = rename_and_retain_cols_biblio_df(biblio_df = biblio_df, reshape_base = Reshape.LENS_COMPACT)
+biblio_df = modify_cols_biblio_df(biblio_df = biblio_df, reshape_base = Reshape.LENS_COMPACT)
 biblio_df = normalise_biblio_entities(biblio_df = biblio_df)
 biblio_df = clean_biblio_df(biblio_df = biblio_df)
 
