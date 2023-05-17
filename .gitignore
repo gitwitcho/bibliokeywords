@@ -1,7 +1,8 @@
 .vscode/
 .ipynb_checkpoints/
+
 data/*
-site/
 examples/
+site/
 
 !data/example_data

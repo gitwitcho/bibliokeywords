@@ -3,7 +3,7 @@ import os
 
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..', 'src')))
 
-from transform import *
+from clean import *
 
 def test_format_auth_affils_dims():
     

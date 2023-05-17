@@ -6,7 +6,7 @@ sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..',
 import pandas as pd
 import numpy as np
 
-from transform import normalise_biblio_entities, BiblioSource
+from clean import normalise_biblio_entities, BiblioSource
 
 
 def test_normalise_biblio_entities():

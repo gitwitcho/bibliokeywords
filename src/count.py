@@ -1,7 +1,7 @@
 import pandas as pd
 
 from typing import List, Dict
-from transform import *
+from clean import *
 
 
 def stack_keyword_count_dfs(keywords_dict: Dict[str, pd.DataFrame]) -> pd.DataFrame:
@@ -137,3 +137,40 @@ def write_keyword_count_to_console(keywords_dict: Dict[str, pd.DataFrame],
         print("-------------------------------------------")
 
     return
+
+
+def create_keyword_count_html(keywords_dict: Dict,
+                              n_cols: int,
+                              max_n_rows: int) -> HTML:
+    
+    kws_html_str = ''
+
+    for col, kw_count_df in keywords_dict:
+
+        kw_count_str_list = kw_count_df.apply(lambda row: str(row['kw']) + ' (' + str(row['count']) + ')', axis=1).tolist()
+
+        # Calculate the number of rows in the table
+        n_rows = len(kw_count_str_list) // n_cols + (len(kw_count_str_list) % n_cols > 0)
+        num_rows_all = n_rows
+
+        # Row cutoff
+        if n_rows > max_n_rows:
+            n_rows = max_n_rows
+
+        # Create an HTML string to display the list of strings in a table
+        kws_html_str = "<h3>Keywords for column '{col}'"
+        kws_html_str += f"Total number of '{col}' keywords: {len(kw_count_str_list)}"
+        kws_html_str += f"Displaying {n_rows} rows of a total of {max_n_rows}"
+        kws_html_str += '<table style="width:100%;">'
+        for j in range(n_cols):
+            kws_html_str += '<td style="vertical-align:top;">'
+            for i in range(n_rows):
+                idx = j * n_rows + i
+                if idx < len(kw_count_str_list) and kw_count_str_list[idx]:
+                    kws_html_str += f'{kw_count_str_list}<br>'
+            kws_html_str += '</td>'
+        kws_html_str += '</table>'
+        kws_html_str += '<br><br>'
+        
+    return HTML(kws_html_str)
+
