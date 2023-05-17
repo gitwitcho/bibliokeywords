@@ -1,15 +1,8 @@
 import pandas as pd
 import numpy as np
 import re
-import logging
-import webcolors
 
-from typing import List, Optional, Union, Dict, Tuple, Any
-from IPython.core.display import HTML
-from openpyxl import Workbook
-from openpyxl.styles import Font, colors, Alignment
-from openpyxl.cell.text import InlineFont
-from openpyxl.cell.rich_text import TextBlock, CellRichText
+from typing import List, Optional, Union, Dict, Any
 
 from config import *
 from utilities import *
