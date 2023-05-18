@@ -7,6 +7,13 @@ from typing import List, Optional, Union, Dict, Any
 from config import *
 from utilities import *
 
+"""
+
+[Module description]
+
+"""
+
+
 def modify_cols_biblio_df(biblio_df_: pd.DataFrame,
                                      reshape_base: Optional[Reshape] = None,
                                      reshape_filter: Optional[Union[Dict,List]] = None,
@@ -183,16 +190,20 @@ def format_auth_scopus(authors: Union[str, float]) -> Union[str, float]:
         authors_str_lst = []
 
         for author in authors_lst:
+            if author.strip():
+                # Split author name into parts (surname and initials)
+                author_parts = author.strip().split()
+                surname = author_parts[0].strip()
 
-            # Split author name into parts (surname and initials)
-            author_parts = author.strip().split()
-            surname = author_parts[0].strip()
-            initials = [name.strip()[0] + '.' if not name.endswith('.') else name.strip() for name in author_parts[1:]]
-            initials = ''.join(initials)
+                if len(author_parts) > 1:
+                    initials = [name.strip()[0] + '.' if not name.endswith('.') else name.strip() for name in author_parts[1:]]
+                    initials = ''.join(initials)
+                else:
+                    initials = 'NA.'
 
-            # Create normalised author string
-            author_str = '{}, {}'.format(surname, initials)
-            authors_str_lst.append(author_str)
+                # Create normalised author string
+                author_str = '{}, {}'.format(surname, initials)
+                authors_str_lst.append(author_str)
 
         normalised_str = '; '.join(authors_str_lst)
 
@@ -226,16 +237,23 @@ def format_auth_lens(authors: Union[str, float]) -> Union[str, float]:
         authors_str_lst = []
 
         for author in authors_lst:
+            try:
+                if author.strip():
+                    # Split author name into parts (surname and initials)
+                    author_parts = author.strip().split()
+                    surname = author_parts[-1]
 
-            # Split author name into parts (surname and initials)
-            author_parts = author.strip().split()
-            surname = author_parts[-1]
-            initials = [name[0] + '.' if not name.endswith('.') else name for name in author_parts[:-1]]
-            initials = ''.join(initials)
+                    if len(author_parts) > 1:
+                        initials = [name[0] + '.' if not name.endswith('.') else name for name in author_parts[:-1]]
+                        initials = ''.join(initials)
+                    else:
+                        initials = 'NA.'
 
-            # Create normalised author string
-            author_str = '{}, {}'.format(surname.strip(), initials.strip())
-            authors_str_lst.append(author_str)
+                    # Create normalised author string
+                    author_str = '{}, {}'.format(surname.strip(), initials.strip())
+                    authors_str_lst.append(author_str)
+            except:
+                raise ValueError(f"Failed with author name '{author}'")
 
         normalised_str = '; '.join(authors_str_lst)
 
@@ -269,17 +287,21 @@ def format_auth_dims(authors: Union[str, float]) -> Union[str, float]:
         authors_str_lst = []
 
         for author in authors_lst:
+            if author.strip():
+                # Split author name into parts (surname and initials)
+                author = author.replace(',', '')
+                author_parts = author.strip().split()
+                surname = author_parts[0].strip()
 
-            # Split author name into parts (surname and initials)
-            author = author.replace(',', '')
-            author_parts = author.strip().split()
-            surname = author_parts[0].strip()
-            initials = [name.strip()[0] + '.' if not name.endswith('.') else name.strip() for name in author_parts[1:]]
-            initials = ''.join(initials)
+                if len(author_parts) > 1:
+                    initials = [name.strip()[0] + '.' if not name.endswith('.') else name.strip() for name in author_parts[1:]]
+                    initials = ''.join(initials)
+                else:
+                    initials = 'NA.'
 
-            # Create normalised author string
-            author_str = '{}, {}'.format(surname, initials)
-            authors_str_lst.append(author_str)
+                # Create normalised author string
+                author_str = '{}, {}'.format(surname, initials)
+                authors_str_lst.append(author_str)
 
         normalised_str = '; '.join(authors_str_lst)
 
@@ -644,6 +666,15 @@ def remove_title_duplicates(biblio_df_: pd.DataFrame) -> pd.DataFrame:
     # Dataframe for duplicate titles
     dup_df = pd.DataFrame()
 
+    # Storing the updated values (e.g. when merging) in a dictionary and then updating
+    # biblio_df in one go outside the loop makes the code run much faster
+    update_dict = {}
+
+    # Storing the indices of rows to drop. This is much faster than using the drop()
+    # function of the dataframe inside the loop. The rows are then dropped from the
+    # dataframe biblio_df outside the loop.
+    drop_rows = []
+
     # Group the rows by the titles and loop over the groups
     for idx, (_, group) in enumerate(biblio_df.groupby('title')):
 
@@ -651,14 +682,14 @@ def remove_title_duplicates(biblio_df_: pd.DataFrame) -> pd.DataFrame:
         if 'source' in group.columns:
             unique_src = group['source'].dropna().str.split(';').explode().str.strip().unique()
             group['sources'] = '; '.join(unique_src)
-            # biblio_df.loc[group.index, 'sources'] = group['source'] => original code
-            # biblio_df.loc[group.index.values, 'sources'] = group['source'] => first attempt
-            biblio_df.loc[biblio_df.index.isin(group.index.values), 'sources'] = \
-                biblio_df.loc[biblio_df.index.isin(group.index.values), 'sources'].str.cat(group['source'], sep='; ')
+            # biblio_df.loc[group.index, 'sources'] = group['sources']
+
+            for row_idx, value in group['sources'].items():     # NEW PERFORMANCE CODE
+                update_dict[(row_idx, 'sources')] = value
 
 
-        if(idx % 1 == 0):
-            print(f'Duplicate group: #{idx} ', end = '\r')
+        if(idx % 100 == 0):
+            print(f'Duplicate group: #{idx} ', end = '\r')   # '\r' to overwrite the previous string; ' ' to append to the right
 
         if len(group) > 1:
             dup_df = pd.concat([dup_df, group])
@@ -670,36 +701,48 @@ def remove_title_duplicates(biblio_df_: pd.DataFrame) -> pd.DataFrame:
             if 'n_cited' in group.columns:
                 sum_n_cited = group['n_cited'].sum()
                 group['n_cited'] = sum_n_cited
-                biblio_df.update(group[['n_cited']])
+                # biblio_df.update(group[['n_cited']])
+                for row_idx, value in group['n_cited'].items():     # NEW PERFORMANCE CODE
+                    update_dict[(row_idx, 'n_cited')] = value
             
             # Merge the values in the fos column
             if 'fos' in group.columns:
                 unique_fos = group['fos'].dropna().str.split(';').explode().str.strip().unique()
                 group['fos'] = '; '.join(unique_fos)
-                biblio_df.update(group[['fos']])
+                # biblio_df.update(group[['fos']])
+                for row_idx, value in group['fos'].items():     # NEW PERFORMANCE CODE
+                    update_dict[(row_idx, 'fos')] = value
 
             # Merge the values in the anzsrc_2020 column
             if 'anzsrc_2020' in group.columns:
                 unique_anzsrc = group['anzsrc_2020'].dropna().str.split(';').explode().str.strip().unique()
                 group['anzsrc_2020'] = '; '.join(unique_anzsrc)
-                biblio_df.update(group[['anzsrc_2020']])
+                # biblio_df.update(group[['anzsrc_2020']])
+                for row_idx, value in group['anzsrc_2020'].items():     # NEW PERFORMANCE CODE
+                    update_dict[(row_idx, 'anzsrc_2020')] = value
 
             # Merge the values in the keywords (kws) column
             if 'kws' in group.columns:
                 unique_kws = group['kws'].str.lower().dropna().str.split(';').explode().str.strip().unique()
                 group['kws'] = '; '.join(unique_kws)
-                biblio_df.update(group[['kws']])
+                # biblio_df.update(group[['kws']])
+                for row_idx, value in group['kws'].items():     # NEW PERFORMANCE CODE
+                    update_dict[(row_idx, 'kws')] = value
 
             # Create a new column 'links' that has all the URLs separate with a space
             if 'links' in group.columns:
                 unique_links = group['links'].dropna().str.split(' ').explode().str.strip().unique()
                 group['links'] = ' '.join(unique_links)
-                biblio_df.update(group[['links']])
+                # biblio_df.update(group[['links']])
+                for row_idx, value in group['links'].items():     # NEW PERFORMANCE CODE
+                    update_dict[(row_idx, 'links')] = value
 
             # Create a new column 'bib_srcs' that has all the bib_src strings of the duplicate titles
             unique_bib_src = group['bib_src'].dropna().str.split(',').explode().str.strip().unique()
             group['bib_srcs'] = ', '.join(unique_bib_src)
-            biblio_df.update(group[['bib_srcs']])
+            # biblio_df.update(group[['bib_srcs']])
+            for row_idx, value in group['bib_srcs'].items():     # NEW PERFORMANCE CODE
+                update_dict[(row_idx, 'bib_srcs')] = value
 
             # Pick an author affiliation string
             if 'author_affils' in group.columns:
@@ -712,6 +755,7 @@ def remove_title_duplicates(biblio_df_: pd.DataFrame) -> pd.DataFrame:
                 if not filtered_group.empty:
                     selected_row = filtered_group.sample(n = 1)
                     group['author_affils'] = selected_row.iloc[0]
+                    # FIXME: I think the biblio_df update is missing here
 
             # If at least one publication in the group has an abstract,
             # remove any publication in the group that doesn't have an abstract
@@ -719,7 +763,8 @@ def remove_title_duplicates(biblio_df_: pd.DataFrame) -> pd.DataFrame:
             if group['abstract'].notna().any():
                 items_to_drop = group[duplicates & group['abstract'].isna()]    # drops all items except the item_to_keep
                 group = group.drop(items_to_drop.index)
-                biblio_df = biblio_df.drop(items_to_drop.index)
+                # biblio_df = biblio_df.drop(items_to_drop.index)
+                drop_rows.append(items_to_drop.index.to_list())
 
             # Check if any publication in the group has bib_src = 'scopus'
             if 'scopus' in group['bib_src'].values:
@@ -743,12 +788,13 @@ def remove_title_duplicates(biblio_df_: pd.DataFrame) -> pd.DataFrame:
                     else:
                         item_to_keep = latest_scopus
 
-                    biblio_df = biblio_df.loc[biblio_df['bib_src'] == 'scopus']
+                    # biblio_df = biblio_df.loc[biblio_df['bib_src'] == 'scopus']
                     group = group.loc[group['bib_src'] == 'scopus']
 
                     items_to_drop = scopus.drop(item_to_keep.index) # drops all items except the item_to_keep
                     group = group.drop(items_to_drop.index)
-                    biblio_df = biblio_df.drop(items_to_drop.index)
+                    # biblio_df = biblio_df.drop(items_to_drop.index)
+                    drop_rows.append(items_to_drop.index.to_list())
 
             # If there are several publications left, select the one with the latest
             # pub_date. If they are all the same, select one randomly.
@@ -767,11 +813,22 @@ def remove_title_duplicates(biblio_df_: pd.DataFrame) -> pd.DataFrame:
                 # Drop all rows except for the one with the largest pub_date
                 indices_to_drop = group.index.difference([random_idx])
                 group = group.drop(indices_to_drop)
-                biblio_df = biblio_df.drop(indices_to_drop)
+                # biblio_df = biblio_df.drop(indices_to_drop)
+                drop_rows.append(indices_to_drop.to_list())
+
 
         else:
             # Copy single values to new columns
             biblio_df['bib_srcs'] = biblio_df['bib_src']
+
+    # Update biblio_df with the value updates (e.g. merges) made during the duplicate scanning above
+    for (row, column), value in update_dict.items():
+        biblio_df.at[row, column] = value
+
+    # Remove rows that were dropped during the duplicate scanning above
+    drop_rows = [item for sublist in drop_rows for item in sublist]
+    biblio_df = biblio_df.drop(drop_rows)
+
 
     # Remove the dummy column
     biblio_df = biblio_df.drop(['pub_date_dummy'], axis = 1)

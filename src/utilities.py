@@ -213,7 +213,7 @@ def merge_biblio_dfs(*biblio_dfs_: pd.DataFrame) -> pd.DataFrame:
 
 
 def write_df(biblio_df: pd.DataFrame,
-             biblio_project_dir_name: str,
+             biblio_project_dir: str,
              output_dir: str,
              output_file: str
              ) -> None:
@@ -244,12 +244,12 @@ def write_df(biblio_df: pd.DataFrame,
     root_dir = get_root_dir()
 
     # Check if the output_file parameter has a valid extension and if the output directory exists
-    validate_output_dir_and_ext(biblio_project_dir_name = biblio_project_dir_name,
+    validate_output_dir_and_ext(biblio_project_dir_name = biblio_project_dir,
                              output_dir = output_dir,
                              output_file = output_file,
                              file_extensions = allowed_file_extensions)
 
-    output_path = Path(root_dir, data_root_dir, biblio_project_dir_name, output_dir, output_file)
+    output_path = Path(root_dir, data_root_dir, biblio_project_dir, output_dir, output_file)
     
     logger.info(f"Writing biblio_df to file {output_file}...")
 
@@ -262,7 +262,7 @@ def write_df(biblio_df: pd.DataFrame,
     return
 
 
-def read_biblio_csv_files_to_df(biblio_project_dir_name: str, 
+def read_biblio_csv_files_to_df(biblio_project_dir: str, 
                                 input_dir: str, 
                                 csv_file_names: Union[str, List[str]] = '',
                                 biblio_source: BiblioSource = BiblioSource.UNDEFINED,
@@ -308,7 +308,7 @@ def read_biblio_csv_files_to_df(biblio_project_dir_name: str,
     
     root_dir = get_root_dir()
 
-    input_dir_path = Path(root_dir, data_root_dir, biblio_project_dir_name, input_dir)
+    input_dir_path = Path(root_dir, data_root_dir, biblio_project_dir, input_dir)
 
     if not input_dir_path.exists():
         raise ValueError(f"The folder {input_dir_path} does not exist")
@@ -329,6 +329,10 @@ def read_biblio_csv_files_to_df(biblio_project_dir_name: str,
     # Read all CSV files in the input directory if csv_files is empty
     if not csv_file_names:
         csv_file_names = [f.name for f in input_dir_path.glob('*.csv')]
+
+    # If n_rows = 0, keep all the rows in the dataframe
+    if isinstance(n_rows, int) and (n_rows < 1):
+        n_rows = None
 
     all_dfs = []
 
