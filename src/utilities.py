@@ -182,6 +182,36 @@ def validate_output_dir_and_ext(biblio_project_dir_name: str,
         raise ValueError(f"The file name '{output_file}' needs to end in {ext_str}")
 
 
+def merge_biblio_dfs(*biblio_dfs_: pd.DataFrame) -> pd.DataFrame:
+    '''
+    Merge multiple bibliogrpahic datasets from different sources (Scopus, Lens, 
+    Dimensions, Biblio). 
+    
+    The datasets are stacked vertically so that dataset columns with the same name are 
+    in the same column in the resulting dataset. Columns that are specific to a particular 
+    bibliographic database are either merged as part of the `clean`function or they can 
+    be droped using `modify_cols_biblio_df` function.
+
+    Args:
+        *biblio_df_:
+            One or several bibliographic datasets `df1, df2, ...`
+    
+    Returns:
+        A dataframe with the merged bibbliographic dataset
+    '''
+
+    biblio_dfs = []
+
+    # Make copies of the dataframes and add them to a list
+    for df in biblio_dfs_:
+        biblio_dfs.append(df.copy())
+
+    # Stack the different dataframes on top of each other
+    merged_df = pd.concat(biblio_dfs, ignore_index = True)
+
+    return merged_df 
+
+
 def write_df(biblio_df: pd.DataFrame,
              biblio_project_dir_name: str,
              output_dir: str,
@@ -315,7 +345,7 @@ def read_biblio_csv_files_to_df(biblio_project_dir_name: str,
     biblio_df = pd.concat(all_dfs, ignore_index = True)
 
     # Apply cutoff again in case multiple files were read
-    if isinstance(n_rows, int):
+    if isinstance(n_rows, int) and (n_rows > 0):
         biblio_df = biblio_df.head(n_rows)
 
     # Create the bib_src column and set to the biblio_type

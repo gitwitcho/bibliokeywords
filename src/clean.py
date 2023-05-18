@@ -651,7 +651,11 @@ def remove_title_duplicates(biblio_df_: pd.DataFrame) -> pd.DataFrame:
         if 'source' in group.columns:
             unique_src = group['source'].dropna().str.split(';').explode().str.strip().unique()
             group['sources'] = '; '.join(unique_src)
-            biblio_df.loc[group.index, 'sources'] = group['source']
+            # biblio_df.loc[group.index, 'sources'] = group['source'] => original code
+            # biblio_df.loc[group.index.values, 'sources'] = group['source'] => first attempt
+            biblio_df.loc[biblio_df.index.isin(group.index.values), 'sources'] = \
+                biblio_df.loc[biblio_df.index.isin(group.index.values), 'sources'].str.cat(group['source'], sep='; ')
+
 
         if(idx % 1 == 0):
             print(f'Duplicate group: #{idx} ', end = '\r')
