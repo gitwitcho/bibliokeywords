@@ -204,7 +204,7 @@ def merge_biblio_dfs(*biblio_dfs_: pd.DataFrame) -> pd.DataFrame:
 
     # Make copies of the dataframes and add them to a list
     for df in biblio_dfs_:
-        biblio_dfs.append(df.copy())
+        biblio_dfs.append(df.copy().reset_index(drop = True))
 
     # Stack the different dataframes on top of each other
     merged_df = pd.concat(biblio_dfs, ignore_index = True)

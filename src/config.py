@@ -1,3 +1,5 @@
+import nltk
+
 from mylogger import MyLogger
 from enum import Enum
 
@@ -10,7 +12,8 @@ model_root_dir = 'models'
 """
     str (int): Module level variable documented inline.
 """
-
+# TODO:
+# - Automatically test for uniqueness of values in the reshape structures below
 
 class BiblioSource(Enum):
     SCOPUS = 1
@@ -61,7 +64,7 @@ reshape_struc_scopus_all = {'Authors': 'authors',
                              'Document Type': 'doc_type',
                              'Publication Stage': 'pub_stage',
                              'Open Access': 'open',
-                             'Source':'source',
+                             'Source':'scopus_source',
                              'EID':'scopus_id',
                              'bib_src': 'bib_src'}
 reshape_struc_scopus_full = {'Authors': 'authors', 
@@ -285,6 +288,15 @@ reshape_strucs = {Reshape.SCOPUS_ALL.value: reshape_struc_scopus_all,
 scopus_strings_remove = ['(',')','TITLE-ABS-KEY', 'TITLE', 'TITLE-ABS', 'KEY', 'NOT']
 lens_strings_remove = ['(',')','title:', 'abstract:', 'keyword:', 'not']
 dims_strings_remove = ['(', ')', 'not']
+
+
+# Download stopwords if they haven't been downloaded previously
+try:
+    nltk.data.find('corpora/stopwords')
+except LookupError:
+    nltk.download('stopwords')
+
+nltk_stopwords = nltk.corpus.stopwords.words('english')
 
 
 # If verbose == True, set the logging level so that info messages are printed
