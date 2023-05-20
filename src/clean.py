@@ -802,9 +802,14 @@ def remove_title_duplicates(biblio_df_: pd.DataFrame) -> pd.DataFrame:
                     update_dict[(row_idx, 'anzsrc_2020')] = value
 
             # Merge the values in the keywords (kws) column
-            if 'kws' in group.columns:
-                unique_kws = group['kws'].str.lower().apply(empty_strings_to_nan).dropna().str.split(';').explode().str.strip().unique()
-                group['kws'] = '; '.join(np.sort(unique_kws[unique_kws != '']))
+            if 'kws' in group.columns:  # FIXME: Apply the missing value handling to all the above (fos, anzsrc, ...)
+                unique_kws = group['kws'].apply(empty_strings_to_nan).dropna() 
+                if not unique_kws.empty:
+                #.str.lower().str.split(';').explode().str.strip().unique()
+                    unique_kws.str.lower().str.split(';').explode().str.strip().unique()
+                    group['kws'] = '; '.join(np.sort(unique_kws[unique_kws != '']))
+                else:
+                    group['kws'] = ''
                 # biblio_df.update(group[['kws']])
                 for row_idx, value in group['kws'].items():     # NEW PERFORMANCE CODE
                     update_dict[(row_idx, 'kws')] = value

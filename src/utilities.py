@@ -283,7 +283,7 @@ def write_df(biblio_df: pd.DataFrame,
 
 def missing_strings_to_empty(biblio_df_: pd.DataFrame) -> pd.DataFrame:
 
-    if not biblio_df_:
+    if biblio_df_.empty:
         return biblio_df_
     
     biblio_df = biblio_df_.copy()
