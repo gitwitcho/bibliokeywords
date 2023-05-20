@@ -1,7 +1,8 @@
 import pandas as pd
+import numpy as np
 
 from config import *
-from typing import Union, List, Dict, Optional
+from typing import Union, List, Dict, Optional, Any
 from pathlib import Path
 
 
@@ -182,6 +183,24 @@ def validate_output_dir_and_ext(biblio_project_dir_name: str,
         raise ValueError(f"The file name '{output_file}' needs to end in {ext_str}")
 
 
+def is_none_nan_empty(value: Any) -> bool:
+    if pd.isna(value) or value is None or not str(value).strip():
+        return True
+    return False
+
+
+def is_not_none_nan_empty(value: Any) -> bool:
+    return not is_none_nan_empty(value)
+
+
+def empty_strings_to_nan(value: Any) -> Union[float, Any]:
+
+    if pd.isna(value) or value is None or not str(value).strip():
+        return np.nan
+    return value
+
+
+
 def merge_biblio_dfs(*biblio_dfs_: pd.DataFrame) -> pd.DataFrame:
     '''
     Merge multiple bibliogrpahic datasets from different sources (Scopus, Lens, 
@@ -262,11 +281,25 @@ def write_df(biblio_df: pd.DataFrame,
     return
 
 
+def missing_strings_to_empty(biblio_df_: pd.DataFrame) -> pd.DataFrame:
+
+    if not biblio_df_:
+        return biblio_df_
+    
+    biblio_df = biblio_df_.copy()
+
+    string_columns = [col for col in biblio_df.columns if type(biblio_df[col].iloc[0]).__name__ == 'str']
+    biblio_df[string_columns] = biblio_df[string_columns].fillna('')
+
+    return biblio_df
+
+
 def read_biblio_csv_files_to_df(biblio_project_dir: str, 
                                 input_dir: str, 
                                 csv_file_names: Union[str, List[str]] = '',
                                 biblio_source: BiblioSource = BiblioSource.UNDEFINED,
                                 n_rows: Optional[int] = None,
+                                missing_str_to_empty = True
                                 ) -> pd.DataFrame:
     """
     Read bibliographic datasets from CSV files and store in a `DataFrame`.
@@ -295,6 +328,8 @@ def read_biblio_csv_files_to_df(biblio_project_dir: str,
             in BiblioKeywords.
         n_rows:
             The maximum number of rows to read from each CSV file. Reads all rows if omitted.
+        missing_str_to_empty:
+            All missiing string values are set to empty string "".
 
     Returns:
         The merged DataFrame containing the bibliographic data.
@@ -351,6 +386,10 @@ def read_biblio_csv_files_to_df(biblio_project_dir: str,
     # Apply cutoff again in case multiple files were read
     if isinstance(n_rows, int) and (n_rows > 0):
         biblio_df = biblio_df.head(n_rows)
+
+    # Set all missing string values to empty string (if missing_str_to_empty = True, which is the default)
+    if missing_str_to_empty:
+        biblio_df = missing_strings_to_empty(biblio_df)
 
     # Create the bib_src column and set to the biblio_type
     if biblio_source == BiblioSource.SCOPUS:

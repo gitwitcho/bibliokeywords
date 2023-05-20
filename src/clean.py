@@ -199,7 +199,7 @@ def format_auth_scopus(authors: Union[str, float]) -> Union[str, float]:
                     initials = [name.strip()[0] + '.' if not name.endswith('.') else name.strip() for name in author_parts[1:]]
                     initials = ''.join(initials)
                 else:
-                    initials = 'NA.'
+                    initials = 'N.A.'
 
                 # Create normalised author string
                 author_str = '{}, {}'.format(surname, initials)
@@ -208,11 +208,11 @@ def format_auth_scopus(authors: Union[str, float]) -> Union[str, float]:
         normalised_str = '; '.join(authors_str_lst)
 
         if normalised_str.startswith('[N'):
-            normalised_str = 'Anonymous, NA.'
+            normalised_str = 'Anonymous, N.A.'
 
         return normalised_str
     else:
-        return 'Anonymous, NA.'
+        return 'Anonymous, N.A.'
 
 
 def format_auth_lens(authors: Union[str, float]) -> Union[str, float]:
@@ -250,7 +250,7 @@ def format_auth_lens(authors: Union[str, float]) -> Union[str, float]:
                         initials = [name[0] + '.' if not name.endswith('.') else name for name in author_parts[:-1]]
                         initials = ''.join(initials)
                     else:
-                        initials = 'NA.'
+                        initials = 'N.A.'
 
                     # Create normalised author string
                     author_str = '{}, {}'.format(surname.strip(), initials.strip())
@@ -261,7 +261,7 @@ def format_auth_lens(authors: Union[str, float]) -> Union[str, float]:
         normalised_str = '; '.join(authors_str_lst)
 
         if normalised_str.startswith('[N'):
-            normalised_str = 'Anonymous, NA.'
+            normalised_str = 'Anonymous, N.A.'
 
         return normalised_str
     else:
@@ -303,7 +303,7 @@ def format_auth_dims(authors: Union[str, float]) -> Union[str, float]:
                     initials = [name.strip()[0] + '.' if not name.endswith('.') else name.strip() for name in author_parts[1:]]
                     initials = ''.join(initials)
                 else:
-                    initials = 'NA.'
+                    initials = 'N.A.'
 
                 # Create normalised author string
                 author_str = '{}, {}'.format(surname, initials)
@@ -312,11 +312,11 @@ def format_auth_dims(authors: Union[str, float]) -> Union[str, float]:
         normalised_str = '; '.join(authors_str_lst)
 
         if normalised_str.startswith('[N'):
-            normalised_str = 'Anonymous, NA.'
+            normalised_str = 'Anonymous, N.A.'
 
         return normalised_str
     else:
-        return 'Anonymous, NA.'
+        return 'Anonymous, N.A.'
 
 
 def format_auth_affils_scopus(auth_affils_str: Union[str, float]) -> Union[str, float]:
@@ -353,7 +353,7 @@ def format_auth_affils_scopus(auth_affils_str: Union[str, float]) -> Union[str, 
                         [parts[0].strip()] for parts in auth_affils]
         else:
             # If auth_affils_str is an empty string, return a default anonymous author-affiliation
-            return 'Anonymous, NA. ()'
+            return 'Anonymous, N.A. ()'
     else:
         return np.nan
 
@@ -458,11 +458,11 @@ def format_auth_affils_dims(auth_affils_str: Union[str, float]) -> Union[str, fl
             if name:
                 auth_affil_str = f'{surname}, {name} ({affiliation})'
             else:
-                auth_affil_str = f'{surname}, NA. ({affiliation})'
+                auth_affil_str = f'{surname}, N.A. ({affiliation})'
         elif affiliation:
-            auth_affil_str = f'Anonymous, NA. ({affiliation})'
+            auth_affil_str = f'Anonymous, N.A. ({affiliation})'
         else:
-            auth_affil_str = f'Anonymous, NA. ()'
+            auth_affil_str = f'Anonymous, N.A. ()'
 
         auth_affil_str_lst.append(auth_affil_str)
 
@@ -584,9 +584,8 @@ def normalise_biblio_entities(biblio_df_: pd.DataFrame,
 
     elif biblio_source == BiblioSource.DIMS:
         if 'mesh' in biblio_df.columns:
-            # biblio_df['kws'] = biblio_df['kws'].apply(lambda x: '; '.join(sorted(x.split('; '))))
             biblio_df['kws'] = biblio_df['mesh'].apply(lambda x: '; '.join(sorted(x.lower().split('; '))) 
-                                                       if pd.notna(x) and ';' in x else x.lower() if pd.notna(x) else np.nan)
+                                                       if is_not_none_nan_empty(x) and ';' in x else x.lower() if is_not_none_nan_empty(x) else np.nan)
         else:
             biblio_df['kws'] = np.nan
 
@@ -605,18 +604,6 @@ def normalise_biblio_entities(biblio_df_: pd.DataFrame,
             biblio_df['auth_affils'] = biblio_df['auth_affils'].apply(format_auth_affils_scopus)
         elif biblio_source == BiblioSource.DIMS:
             biblio_df['auth_affils'] = biblio_df['auth_affils'].apply(format_auth_affils_dims)
-
-    # Convert some other entities to lower case
-    # if 'fos' in biblio_df.columns:
-    #     biblio_df['fos'] = biblio_df['fos'].apply(lambda x: x.lower() if pd.notnull(x) else x) # biblio_df['fos'].str.lower()
-    # if 'kws_lens' in biblio_df.columns:
-    #     biblio_df['kws_lens'] = biblio_df['kws_lens'].apply(lambda x: x.lower() if pd.notnull(x) else x) # biblio_df['kws_lens'].str.lower()
-    # if 'mesh' in biblio_df.columns:
-    #     biblio_df['mesh'] = biblio_df['mesh'].apply(lambda x: x.lower() if pd.notnull(x) else x) # biblio_df['mesh'].fillna('').str.lower()
-    # if 'kws_author' in biblio_df.columns:
-    #     biblio_df['kws_author'] = biblio_df['kws_author'].apply(lambda x: x.lower() if pd.notnull(x) else x) # biblio_df['kws_author'].fillna('').str.lower()
-    # if 'kws_index' in biblio_df.columns:
-    #     biblio_df['kws_index'] = biblio_df['kws_index'].apply(lambda x: x.lower() if pd.notnull(x) else x) # biblio_df['kws_index'].fillna('').str.lower()
 
     biblio_df = biblio_df.drop(columns = ['ext_url', 'source_urls', 'kws_author', 'kws_index', 'kws_lens', 'mesh'], errors = 'ignore')
 
@@ -671,6 +658,9 @@ def remove_title_duplicates(biblio_df_: pd.DataFrame) -> pd.DataFrame:
     Assumptions:
         The titles have previously been cleaned using the function `clean_biblio_df`. If not, there is a chance that duplicate titles are being missed because of differences in lower/upper case, special characters, etc.
     """
+    # TODO: Add a duplicate title check at the end of the function. Better safe than sorry.
+    # TODO: Also check dup_df for single titles.
+    # TODO: Check that all bib_src are of the four allowable types.
 
     # Ensure that biblio_df has columns title and bib_src
     if 'title' not in biblio_df_.columns or 'bib_src' not in biblio_df_.columns:
@@ -700,24 +690,28 @@ def remove_title_duplicates(biblio_df_: pd.DataFrame) -> pd.DataFrame:
 
     # Create column pub_date if it doesn't exist (in Scopus for instance)
     if 'pub_date' not in biblio_df.columns:
-        biblio_df['pub_date'] = np.nan
-
-    # Replace the missing pub_date with 1/1/1700
-    # biblio_df['pub_date_dummy'] = biblio_df['pub_date'].fillna(pd.to_datetime('01-01-1700', format = '%d-%m-%Y')) # TODO:
+        biblio_df['pub_date'] = pd.NaT
 
     if not biblio_df.empty:
 
         # Create a pub_date of 01/01/year for all missing pub_dates
         biblio_df['pub_date_dummy'] = biblio_df['pub_date']
-        biblio_df['pub_date_dummy'].fillna(pd.to_datetime('01-01-' + biblio_df.loc[biblio_df['year'] != 0, 'year'].astype(int).astype(str), format = '%d-%m-%Y'), inplace=True)
+        mask_year_not_nan = (biblio_df['year'] != 0)
+        # biblio_df.loc[mask_year_not_nan, 'pub_date_dummy'] = biblio_df.loc[mask_year_not_nan, 'pub_date_dummy'] \
+        #     .fillna(pd.to_datetime('01-01-' + biblio_df.loc[mask_year_not_nan, 'year'].astype(int).astype(str), format='%d-%m-%Y'))
+        biblio_df.loc[mask_year_not_nan, 'pub_date_dummy'] = biblio_df.loc[mask_year_not_nan, 'pub_date_dummy'] \
+            .fillna(pd.to_datetime('01-01-' + biblio_df.loc[mask_year_not_nan, 'year'].astype(int).astype(str), errors='coerce'))
+
 
         # Convert all 'pub_date_dummy' values to datetime
         biblio_df['pub_date_dummy'] = pd.to_datetime(biblio_df['pub_date_dummy'], errors = 'coerce')
 
         # Extract missing years from pub_date
         if (biblio_df['year'] == 0).any():
-            biblio_df.loc[biblio_df['year'] == 0, 'year'] = \
-                biblio_df.loc[biblio_df['year'] == 0, 'pub_date_dummy'].dt.year
+            mask = (biblio_df['year'] == 0) & biblio_df['pub_date_dummy'].notna()
+            biblio_df.loc[mask, 'year'] = \
+                biblio_df.loc[mask, 'pub_date_dummy'].dt.year
+
             
     biblio_df['pub_date'] = biblio_df['pub_date_dummy']
 
@@ -731,7 +725,7 @@ def remove_title_duplicates(biblio_df_: pd.DataFrame) -> pd.DataFrame:
 
     if 'source' in biblio_df:
         biblio_df['source'] = biblio_df['source'].astype(str).apply(capitalize_words_except_stopwords)
-        biblio_df['sources'] = np.nan
+        biblio_df['sources'] = ''
     
     # Dataframe for duplicate titles
     dup_df = pd.DataFrame()
@@ -750,9 +744,12 @@ def remove_title_duplicates(biblio_df_: pd.DataFrame) -> pd.DataFrame:
 
         # Create a new column 'sources' that has all the source titles
         if 'source' in group.columns:
-            unique_src = group['source'].dropna().str.split(';').explode().str.strip().unique()
-            group['sources'] = '; '.join(unique_src)
-            # biblio_df.loc[group.index, 'sources'] = group['sources']
+            unique_src = group['source'].apply(empty_strings_to_nan).dropna() 
+            if not unique_src.empty:
+                 #.str.split(';').explode().str.strip().unique()
+                group['sources'] = '; '.join(unique_src.str.split(';').explode().str.strip().unique())
+            else:
+                group['sources'] = ''
 
             for row_idx, value in group['sources'].items():     # NEW PERFORMANCE CODE
                 update_dict[(row_idx, 'sources')] = value
@@ -765,7 +762,7 @@ def remove_title_duplicates(biblio_df_: pd.DataFrame) -> pd.DataFrame:
             dup_df = pd.concat([dup_df, group])
 
             # Identify the duplicates by index within this group
-            duplicates = group.duplicated(subset = 'title_dummy', keep = False)
+            # duplicates = group.duplicated(subset = 'title_dummy', keep = False)
 
             # Sum the values in n_cited
             if 'n_cited' in group.columns:
@@ -783,53 +780,54 @@ def remove_title_duplicates(biblio_df_: pd.DataFrame) -> pd.DataFrame:
             
             # Merge the values in the fos column
             if 'fos' in group.columns:
-                unique_fos = group['fos'].dropna().str.split(';').explode().str.strip().unique()
+                unique_fos = group['fos'].apply(empty_strings_to_nan).dropna().str.split(';').explode().str.strip().unique()
+
                 if unique_fos.size > 0:
-                    group['fos'] = '; '.join(unique_fos)
+                    group['fos'] = '; '.join(np.sort(unique_fos[unique_fos != '']))
                 else:
-                    group['fos'] = np.nan
-                # biblio_df.update(group[['fos']])
+                    group['fos'] = ''
+
                 for row_idx, value in group['fos'].items():     # NEW PERFORMANCE CODE
                     update_dict[(row_idx, 'fos')] = value
 
             # Merge the values in the anzsrc_2020 column
             if 'anzsrc_2020' in group.columns:
-                unique_anzsrc = group['anzsrc_2020'].dropna().str.split(';').explode().str.strip().unique()
+                unique_anzsrc = group['anzsrc_2020'].apply(empty_strings_to_nan).dropna().str.split(';').explode().str.strip().unique()
                 if unique_anzsrc.size > 0:
-                    group['anzsrc_2020'] = '; '.join(unique_anzsrc)
+                    group['anzsrc_2020'] = '; '.join(np.sort(unique_anzsrc[unique_anzsrc != '']))
                 else:
-                    group['anzsrc_2020'] = np.nan
+                    group['anzsrc_2020'] = ''
                 # biblio_df.update(group[['anzsrc_2020']])
                 for row_idx, value in group['anzsrc_2020'].items():     # NEW PERFORMANCE CODE
                     update_dict[(row_idx, 'anzsrc_2020')] = value
 
             # Merge the values in the keywords (kws) column
             if 'kws' in group.columns:
-                unique_kws = group['kws'].str.lower().dropna().str.split(';').explode().str.strip().unique()
-                group['kws'] = '; '.join(unique_kws)
+                unique_kws = group['kws'].str.lower().apply(empty_strings_to_nan).dropna().str.split(';').explode().str.strip().unique()
+                group['kws'] = '; '.join(np.sort(unique_kws[unique_kws != '']))
                 # biblio_df.update(group[['kws']])
                 for row_idx, value in group['kws'].items():     # NEW PERFORMANCE CODE
                     update_dict[(row_idx, 'kws')] = value
 
             # Create a new column 'links' that has all the URLs separate with a space
             if 'links' in group.columns:
-                unique_links = group['links'].dropna().str.split(' ').explode().str.strip().unique()
-                group['links'] = ' '.join(unique_links)
+                unique_links = group['links'].apply(empty_strings_to_nan).dropna().str.split(' ').explode().str.strip().unique()
+                group['links'] = ' '.join(np.sort(unique_links[unique_links != '']))
                 # biblio_df.update(group[['links']])
                 for row_idx, value in group['links'].items():     # NEW PERFORMANCE CODE
                     update_dict[(row_idx, 'links')] = value
 
             # Create a new column 'bib_srcs' that has all the bib_src strings of the duplicate titles
-            unique_bib_src = group['bib_src'].dropna().str.split(',').explode().str.strip().unique()
-            group['bib_srcs'] = ', '.join(unique_bib_src)
-            # biblio_df.update(group[['bib_srcs']])
+            unique_bib_src = group['bib_src'].apply(empty_strings_to_nan).dropna().str.split(',').explode().str.strip().unique()
+            group['bib_srcs'] = '; '.join(unique_bib_src)
+
             for row_idx, value in group['bib_srcs'].items():     # NEW PERFORMANCE CODE
                 update_dict[(row_idx, 'bib_srcs')] = value
 
             # Pick an author string
             if 'authors' in group.columns:
                 has_scopus = group['bib_src'].str.contains('scopus', case = False, na = False)
-                filtered_group = group['authors'].dropna()
+                filtered_group = group['authors'].apply(empty_strings_to_nan).dropna()
 
                 if has_scopus.any():
                     filtered_group = filtered_group.loc[has_scopus]
@@ -837,14 +835,14 @@ def remove_title_duplicates(biblio_df_: pd.DataFrame) -> pd.DataFrame:
                 if not filtered_group.empty:
                     selected_row = filtered_group.sample(n = 1)
                     group['authors'] = selected_row.iloc[0]
-                    # 
+                    
                     for row_idx, value in group['authors'].items():     # NEW PERFORMANCE CODE
                         update_dict[(row_idx, 'authors')] = value
 
             # Pick an author affiliation string
             if 'auth_affils' in group.columns:
                 has_scopus = group['bib_src'].str.contains('scopus', case = False, na = False)
-                filtered_group = group['auth_affils'].dropna()
+                filtered_group = group['auth_affils'].apply(empty_strings_to_nan).dropna()
 
                 if has_scopus.any():
                     filtered_group = filtered_group.loc[has_scopus]
@@ -852,14 +850,14 @@ def remove_title_duplicates(biblio_df_: pd.DataFrame) -> pd.DataFrame:
                 if not filtered_group.empty:
                     selected_row = filtered_group.sample(n = 1)
                     group['auth_affils'] = selected_row.iloc[0]
-                    # 
+
                     for row_idx, value in group['auth_affils'].items():     # NEW PERFORMANCE CODE
                         update_dict[(row_idx, 'auth_affils')] = value
 
             # Pick a link
             if 'link' in group.columns:
                 has_scopus = group['bib_src'].str.contains('scopus', case = False, na = False)
-                filtered_group = group['link'].dropna()
+                filtered_group = group['link'].apply(empty_strings_to_nan).dropna()
 
                 if has_scopus.any():
                     filtered_group = filtered_group.loc[has_scopus]
@@ -874,41 +872,22 @@ def remove_title_duplicates(biblio_df_: pd.DataFrame) -> pd.DataFrame:
             # If at least one publication in the group has an abstract,
             # remove any publication in the group that doesn't have an abstract
             # and then reset the group with the removed publications
-            if group['abstract'].notna().any():
-                items_to_drop = group[duplicates & group['abstract'].isna()]    # drops all items except the item_to_keep
+            if group['abstract'].apply(is_not_none_nan_empty).any():     # FIXME: correct all other instances where I use dropna()
+                items_to_drop = group[group['abstract'].apply(is_none_nan_empty)]    # drops all NAN and empty abstracts
                 group = group.drop(items_to_drop.index)
-                # biblio_df = biblio_df.drop(items_to_drop.index)
                 drop_rows.append(items_to_drop.index.to_list())
 
             # Check if any publication in the group has bib_src = 'scopus'
             if 'scopus' in group['bib_src'].values:
 
                 # Identify the duplicates within this group
-                duplicates = group.duplicated(subset = 'title_dummy', keep = False)
                 scopus_mask = (group['bib_src'] == 'scopus')
-
                 scopus = group[scopus_mask]
 
                 if scopus.shape[0] > 0:
-                    # latest_scopus = scopus.loc[[scopus['year'].idxmax()]]
-                    item_to_keep = scopus.loc[[scopus['year'].idxmax()]]
-
-                    # if latest_scopus['abstract'].isna().any():
-                    #     scopus_with_abstract = scopus.dropna(subset = ['abstract'], how = 'any')
-
-                    #     if scopus_with_abstract.shape[0] > 0:
-                    #         item_to_keep = scopus_with_abstract.sample()
-                    #     else:
-                    #         item_to_keep = scopus.sample()
-                    # else:
-                    #     item_to_keep = latest_scopus
-
-                    # biblio_df = biblio_df.loc[biblio_df['bib_src'] == 'scopus']
-                    # group = group.loc[group['bib_src'] == 'scopus']
-
-                    items_to_drop = group.drop(item_to_keep.index) # drops all items except the item_to_keep
+                    items_to_keep = scopus.loc[scopus['year'] == scopus['year'].max()]
+                    items_to_drop = group.drop(items_to_keep.index) # drops all items except the item_to_keep
                     group = group.drop(items_to_drop.index)
-                    # biblio_df = biblio_df.drop(items_to_drop.index)
                     drop_rows.append(items_to_drop.index.to_list())
 
             # If there are several publications left, select the one with the latest
@@ -917,10 +896,13 @@ def remove_title_duplicates(biblio_df_: pd.DataFrame) -> pd.DataFrame:
 
                 # If there are multiple records with the same largest pub_date, first check whether 
                 # there is one that has a source. If there are multiple, then pick one at random
-                if 'source' in group.columns and group['source'].notna().any():
-                    idxmax_group = group[group['source'].notna()]
+                if 'source' in group.columns and group['source'].apply(is_not_none_nan_empty).any():
+                    idxmax_group = group[group['source'].apply(is_not_none_nan_empty)]
                 else:
-                    idxmax_group = group.loc[group['pub_date_dummy'] == group['pub_date_dummy'].max()]
+                    if group['pub_date_dummy'].isna().all():
+                        idxmax_group = group
+                    else:
+                        idxmax_group = group.loc[group['pub_date_dummy'] == group['pub_date_dummy'].max()]
 
                 idxmax_values = idxmax_group.index.values
                 random_idx = np.random.choice(idxmax_values)
@@ -928,10 +910,7 @@ def remove_title_duplicates(biblio_df_: pd.DataFrame) -> pd.DataFrame:
                 # Drop all rows except for the one with the largest pub_date
                 indices_to_drop = group.index.difference([random_idx])
                 group = group.drop(indices_to_drop)
-                # biblio_df = biblio_df.drop(indices_to_drop)
                 drop_rows.append(indices_to_drop.to_list())
-
-
         else:
             # Copy single values to new columns
             biblio_df['bib_srcs'] = biblio_df['bib_src']
@@ -1011,8 +990,8 @@ def clean_biblio_df(biblio_df_: pd.DataFrame) -> pd.DataFrame:
     print(f'Removed {count_titles_empty} titles that were empty strings')
 
     # Remove all titles that are NaN
-    count_titles_nan = biblio_df['title'].isna().sum()
-    biblio_df = biblio_df.dropna(subset = ['title'])
+    count_titles_nan = biblio_df['title'].apply(is_none_nan_empty).sum()
+    biblio_df['title'] = biblio_df['title'].apply(empty_strings_to_nan).dropna()
     print(f'Removed {count_titles_nan} titles that were NaN')
 
     # Remove all titles that contain 'conference', 'workshop', or 'proceedings'
@@ -1069,7 +1048,7 @@ def clean_biblio_df(biblio_df_: pd.DataFrame) -> pd.DataFrame:
     """
 
     # Replace all abstracts that are NaN with empty strings
-    count_abs_nan = biblio_df['abstract'].isna().sum()
+    count_abs_nan = biblio_df['abstract'].apply(is_none_nan_empty).sum()
     biblio_df['abstract'] = biblio_df['abstract'].fillna('')
     print(f'Replaced {count_abs_nan} abtracts that were NaN with an empty string')
 
@@ -1132,11 +1111,11 @@ def clean_biblio_df(biblio_df_: pd.DataFrame) -> pd.DataFrame:
 
         if (row['authors'] != "") and isinstance(row['authors'], str):
             if "no author name" in row['authors'].lower():
-                author = 'Anonymous, NA.'
+                author = 'Anonymous, N.A.'
             else:
                 author = row['authors'].split()[0].strip().strip(',')
         else:
-            author = 'Anonymous, NA.'
+            author = 'Anonymous, N.A.'
 
         id = str(counter).zfill(6) + '_' + author + '_' + str(row['year'])
         counter += 1

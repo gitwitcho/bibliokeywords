@@ -6,7 +6,8 @@ sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..',
 import pandas as pd
 import numpy as np
 
-from clean import remove_title_duplicates
+from utilities import *
+from clean import *
 from pandas import testing as tm
 
 '''
@@ -16,6 +17,7 @@ and when making changes to `remove_title_duplicates`.
 
 The following items are tested:
     - Merging of the columns
+        - sources (joined by '; ')
         - bib_srcs (joined by '; ')
         - n_cited: sum the citations, except between duplicate sources where the maximum vakue is used
         - fos (joined by '; ')
@@ -33,14 +35,455 @@ The following items are tested:
             - source_urls (Lens)
             - link (Dimensions)
     - Other operations
-        - year replaced by pub_date
-        - pub_date replace by year
+        - year replaced by pub_date, pub_date replace by year
         - authors format is normalised
         - authors-affiliations format is normalised
     - Values in all other columns are unchanged
 '''
 
-dup_1_1_df = [
+
+# Test case with changes to pub_date and year
+#   1. pub_date given, year nan: year is pub_date year
+#   2. year given, pub_date nan: pub:date is 1/1/year
+#   3. neither year nor pub_date are given: both remain nan
+def test_pub_date_year():
+
+    input_df = pd.DataFrame({
+        'authors': ['auth0'],
+        'title': ['title0'],
+        'abstract': ['abs0'],
+        'year': [np.nan],
+        'pub_date': [pd.NaT],
+        'bib_src': ['lens']
+    })
+
+    expected_output_df = pd.DataFrame({
+        'authors': ['auth0'],
+        'title': ['title0'],
+        'abstract': ['abs0'],
+        'year': [0],
+        'pub_date': [pd.NaT]
+    })
+    
+    remove_cols = ['bib_src', 'bib_srcs']   # drop bib_src since it will be picked at random
+
+    # 1. Neither year nor pub_date are given: both remain nan
+    output_df = remove_title_duplicates(input_df).drop(columns = remove_cols)
+    tm.assert_frame_equal(output_df.reset_index(drop = True), expected_output_df.reset_index(drop = True))
+
+    # 2. Year given, pub_date nan: pub:date is 1/1/year
+    input_df['year'] = 2023
+    input_df['pub_date'] = pd.NaT
+    expected_output_df['year'] = 2023
+    expected_output_df['pub_date'] = pd.to_datetime('2023-01-01')
+
+    output_df = remove_title_duplicates(input_df).drop(columns = remove_cols)
+    tm.assert_frame_equal(output_df.reset_index(drop = True), expected_output_df.reset_index(drop = True))
+
+    # 3. pub_date given, year nan: year is pub_date year
+    input_df['year'] = np.nan
+    input_df['pub_date'] = '2019-12-06'
+    expected_output_df['year'] = 2019
+    expected_output_df['pub_date'] = pd.to_datetime('2019-12-06')
+
+    output_df = remove_title_duplicates(input_df).drop(columns = remove_cols)
+    tm.assert_frame_equal(output_df.reset_index(drop = True), expected_output_df.reset_index(drop = True))
+
+
+# Test case for merging the source columns
+#   1. All sources are NAN or empty strings
+#   2. All sources are the same except for whitespaces and letter cases
+#   3. Some sources are different, with some NANs
+def test_merge_source_cols():
+
+    input_df = pd.DataFrame({
+        'authors': ['auth0', 'auth0', 'auth0'],
+        'title': ['title0', 'title0', 'title0'],
+        'abstract': ['abs0', 'abs0', 'abs0'],
+        'source': ['Scientific reports', ' scientific  reports', 'Scientific Reports'],
+        'bib_src': ['lens', 'dims', 'lens']
+    })
+
+    expected_output_df = pd.DataFrame({
+        'authors': ['auth0'],
+        'title': ['title0'],
+        'abstract': ['abs0'],
+        'source': ['Scientific Reports'],
+        'sources': ['Scientific Reports']
+    })
+
+    remove_cols = ['year', 'pub_date', 'bib_src', 'bib_srcs']   # drop bib_src since it will be picked at random
+
+    # 1. All sources are NAN or empty strings
+    input_df['source'] = ['', '', '']
+    expected_output_df['source'] = ''
+    expected_output_df['sources'] = ''
+
+    output_df = remove_title_duplicates(input_df).drop(columns = remove_cols)
+    tm.assert_frame_equal(output_df.reset_index(drop = True), expected_output_df.reset_index(drop = True))
+
+    # 2. All sources are the same except for whitespaces and letter cases
+    input_df['source'] = ['Scientific reports', ' scientific  reports', 'Scientific Reports']
+    expected_output_df['source'] = 'Scientific Reports'
+    expected_output_df['sources'] = 'Scientific Reports'
+
+    output_df = remove_title_duplicates(input_df).drop(columns = remove_cols)
+    tm.assert_frame_equal(output_df.reset_index(drop = True), expected_output_df.reset_index(drop = True))
+
+    # 3. Some sources are different, with some NANs
+    input_df['source'] = ['physics   today', ' scientific  reports', 'Journal of Mathematics']
+    expected_output_df['sources'] = ['Physics Today; Scientific Reports; Journal of Mathematics']
+
+    remove_cols += ['source']   # source is picked at random this scenario
+    expected_output_df.drop(columns = 'source', inplace = True)
+
+    output_df = remove_title_duplicates(input_df).drop(columns = remove_cols)
+    tm.assert_frame_equal(output_df.reset_index(drop = True), expected_output_df.reset_index(drop = True))
+
+# Test case for merging bib_srcs
+#   1. Same bib_src
+#   2. Different bib_src
+def test_merge_bib_src_cols():
+
+    input_df = pd.DataFrame({
+        'authors': ['auth0', 'auth0', 'auth0'],
+        'title': ['title0', 'title0', 'title0'],
+        'abstract': ['abs0', 'abs0', 'abs0'],
+        'bib_src': ['scopus', 'scopus', 'scopus']
+    })
+
+    expected_output_df = pd.DataFrame({
+        'authors': ['auth0'],
+        'title': ['title0'],
+        'abstract': ['abs0'],
+        'bib_srcs': ['scopus']
+    })
+    
+    remove_cols = ['bib_src', 'year', 'pub_date']   # drop bib_src since it will be picked at random
+
+    # 1. Same bib_src
+    output_df = remove_title_duplicates(input_df).drop(columns = remove_cols)
+    tm.assert_frame_equal(output_df.reset_index(drop = True), expected_output_df.reset_index(drop = True))
+
+    # 2. Different bib_src
+    input_df['bib_src'] = ['dims', 'scopus', 'lens']
+    expected_output_df['bib_srcs'] = 'dims; scopus; lens'
+    output_df = remove_title_duplicates(input_df).drop(columns = remove_cols)
+    tm.assert_frame_equal(output_df.reset_index(drop = True), expected_output_df.reset_index(drop = True))
+
+
+# Test case for merging n_cited
+#   1. All sources are different: sum all n_cited
+#   2. Some sources are the same: don't sum n_cited for identical sources, instead pick the max value
+def test_merge_n_cited_cols():
+
+    input_df = pd.DataFrame({
+        'authors': ['auth0', 'auth0', 'auth0'],
+        'title': ['title0', 'title0', 'title0'],
+        'abstract': ['abs0', 'abs0', 'abs0'],
+        'bib_src': ['dims', 'lens', 'scopus'],
+        'source': ['pub1', 'pub2', 'pub3'],
+        'n_cited': [4, 7, 12]
+    })
+
+    expected_output_df = pd.DataFrame({
+        'authors': ['auth0'],
+        'title': ['title0'],
+        'abstract': ['abs0'],
+        'n_cited': [23]
+    })
+    
+    remove_cols = ['source', 'sources', 'bib_src', 'bib_srcs', 'year', 'pub_date']   # drop bib_src since it will be picked at random
+
+    # 1. All sources are different: sum all n_cited
+    output_df = remove_title_duplicates(input_df).drop(columns = remove_cols)
+    tm.assert_frame_equal(output_df.reset_index(drop = True), expected_output_df.reset_index(drop = True))
+
+    # 2. Some sources are the same: don't sum n_cited for identical sources, instead pick the max value
+    input_df['source'] = ['pub1', 'pub2', 'pub1']
+    expected_output_df['n_cited'] = 19
+    output_df = remove_title_duplicates(input_df).drop(columns = remove_cols)
+    tm.assert_frame_equal(output_df.reset_index(drop = True), expected_output_df.reset_index(drop = True))
+
+
+# Test case for merging fos and anzsrc
+def test_merge_fos_anzsrc_cols():
+
+    input_df = pd.DataFrame({
+        'authors': ['auth0', 'auth0', 'auth0'],
+        'title': ['title0', 'title0', 'title0'],
+        'abstract': ['abs0', 'abs0', 'abs0'],
+        'bib_src': ['lens', 'lens', 'lens'],
+        'fos': ['f2; f1; f3', 'f2; f4', ''],
+        'anzsrc_2020': ['a1; ; a6', 'a2; a1; a5; a6', '']
+    })
+
+    expected_output_df = pd.DataFrame({
+        'authors': ['auth0'],
+        'title': ['title0'],
+        'abstract': ['abs0'],
+        'fos': ['f1; f2; f3; f4'],
+        'anzsrc_2020': ['a1; a2; a5; a6']
+    })
+    
+    remove_cols = ['bib_src', 'bib_srcs', 'year', 'pub_date']
+
+    output_df = remove_title_duplicates(input_df).drop(columns = remove_cols)
+    tm.assert_frame_equal(output_df.reset_index(drop = True), expected_output_df.reset_index(drop = True))
+
+
+# Test case for merging keywords
+def test_merge_kws_cols():
+
+    input_df = pd.DataFrame({
+        'authors': ['auth0', 'auth0', 'auth0'],
+        'title': ['title0', 'title0', 'title0'],
+        'abstract': ['abs0', 'abs0', 'abs0'],
+        'bib_src': ['lens', 'scopus', 'dims'],
+        'kws': ['k2; k1; k3', 'k2; k4', 'k9; ; k8']
+    })
+
+    expected_output_df = pd.DataFrame({
+        'authors': ['auth0'],
+        'title': ['title0'],
+        'abstract': ['abs0'],
+        'kws': ['k1; k2; k3; k4; k8; k9']
+    })
+    
+    remove_cols = ['bib_src', 'bib_srcs', 'year', 'pub_date']   # drop bib_src since it will be picked at random
+
+    output_df = remove_title_duplicates(input_df).drop(columns = remove_cols)
+    tm.assert_frame_equal(output_df.reset_index(drop = True), expected_output_df.reset_index(drop = True))
+
+
+# Test case for merging links
+def test_merge_links_cols():
+
+    input_df = pd.DataFrame({
+        'authors': ['auth0', 'auth0', 'auth0'],
+        'title': ['title0', 'title0', 'title0'],
+        'abstract': ['abs0', 'abs0', 'abs0'],
+        'bib_src': ['lens', 'scopus', 'dims'],
+        'links': ['https://example.com https://trivia.com ', '   ', ' https://trivia.com https://any.com  ']
+    })
+
+    expected_output_df = pd.DataFrame({
+        'authors': ['auth0'],
+        'title': ['title0'],
+        'abstract': ['abs0'],
+        'links': ['https://any.com https://example.com https://trivia.com']
+    })
+    
+    remove_cols = ['bib_src', 'bib_srcs', 'year', 'pub_date']   # drop bib_src since it will be picked at random
+
+    output_df = remove_title_duplicates(input_df).drop(columns = remove_cols)
+    tm.assert_frame_equal(output_df.reset_index(drop = True), expected_output_df.reset_index(drop = True))
+
+
+# Test case for picking an authors string, authors-affiliations string, and links string
+#   1. If there is a scopus entry, pick that authors/authors-affils/links string
+#   2. If there are multiple scopus entries, pick the authors/authors-affils/links string from those at random
+#   3. If there are no scopus entries, pick the authors/authors-affils/links string at random
+def test_merge_authors_cols():
+
+    input_df = pd.DataFrame({
+        'authors': ['auth1', 'auth2', 'auth3'],
+        'title': ['title0', 'title0', 'title0'],
+        'abstract': ['abs0', 'abs0', 'abs0'],
+        'bib_src': ['dims', 'lens', 'scopus'],
+        'auth_affils': ['af1', 'af2', 'af3'],
+        'link': ['https://example.com', '   ', 'https://trivia.com']
+
+    })
+
+    expected_output_df = pd.DataFrame({
+        'authors': ['auth3'],
+        'title': ['title0'],
+        'abstract': ['abs0'],
+        'bib_src': ['scopus'],
+        'auth_affils': ['af3'],
+        'link': ['https://trivia.com']
+    })
+    
+    remove_cols = ['bib_srcs', 'year', 'pub_date']
+
+    # 1. If there is a scopus entry, pick that author
+    output_df = remove_title_duplicates(input_df).drop(columns = remove_cols)
+    tm.assert_frame_equal(output_df.reset_index(drop = True), expected_output_df.reset_index(drop = True))
+
+    # 2. If there are multiple scopus entries, pick the author from those at random
+    input_df['bib_src'] = ['scopus', 'lens', 'scopus']
+    output_df = remove_title_duplicates(input_df).drop(columns = remove_cols)
+    assert (output_df['authors'].iloc[0] == 'auth1') | (output_df['authors'].iloc[0] == 'auth3')
+
+    # 3. If there are no scopus entries, pick the author at random
+    input_df['bib_src'] = ['dims', 'lens', 'dims']
+    output_df = remove_title_duplicates(input_df).drop(columns = remove_cols)
+    assert (output_df['authors'].iloc[0] == 'auth1') | (output_df['authors'].iloc[0] == 'auth2') | (output_df['authors'].iloc[0] == 'auth3')
+
+
+# Test case for the complex scenario (abstract => bib_src => year => source => pub_date => random pick)
+def test_complex_case():
+
+    input_df = pd.DataFrame({
+        'authors': ['auth0', 'auth0', 'auth0'],
+        'title': ['title0', 'title0', 'title0'],
+        'abstract': ['abs0', 'abs0', 'abs0'],
+        'bib_src': ['dims', 'lens', 'scopus'],
+        'source': ['s1', 's2', 's3'],
+        'year': [2019, 2020, 2021],
+        'pub_date': ['2019-04-01', '2020-11-23', '2021-02-13']
+    })
+
+    expected_output_df = pd.DataFrame({
+        'authors': ['auth0'],
+        'title': ['title0'],
+        'abstract': ['abs0'],
+        'bib_src': ['scopus'],
+        'source': ['S3'],
+        'year': 2021,
+        'pub_date': pd.to_datetime('2021-02-13')
+    })
+    
+    remove_cols = ['sources', 'bib_srcs']
+
+    # 1. Single scopus source: picks that publication
+    output_df = remove_title_duplicates(input_df).drop(columns = remove_cols)
+    tm.assert_frame_equal(output_df.reset_index(drop = True), expected_output_df.reset_index(drop = True))
+
+    # 2. Like 1, but no abstracts (keeps all pubs), no sources, no years, no pub_dates
+    input_df['abstract'] = ['', '', '']
+    input_df['source'] = ['', '', '']
+    input_df['year'] = [np.nan, np.nan, np.nan]
+    input_df['pub_date'] = [pd.NaT, pd.NaT, pd.NaT]
+    expected_output_df['abstract'] = ['']
+    expected_output_df['source'] = ['']
+    expected_output_df['year'] = [0]
+    expected_output_df['pub_date'] = [pd.NaT]
+
+    output_df = remove_title_duplicates(input_df).drop(columns = remove_cols)
+    tm.assert_frame_equal(output_df.reset_index(drop = True), expected_output_df.reset_index(drop = True))
+
+    # 3. No abstracts, double scopus, single max year, no sources, one max pub_date: picks scopus with max year
+    input_df['bib_src'] = ['scopus', 'lens', 'scopus']
+    input_df['abstract'] = ['', '', '']
+    input_df['source'] = ['', '', '']
+    input_df['year'] = [2016, 2023, 2019]
+    input_df['pub_date'] = [pd.NaT, pd.to_datetime('2023-04-08'), pd.to_datetime('2019-10-10')]
+    expected_output_df['abstract'] = ['']
+    expected_output_df['source'] = ['']
+    expected_output_df['year'] = [2019]
+    expected_output_df['pub_date'] = [pd.to_datetime('2019-10-10')]
+
+    output_df = remove_title_duplicates(input_df).drop(columns = remove_cols)
+    tm.assert_frame_equal(output_df.reset_index(drop = True), expected_output_df.reset_index(drop = True))
+
+    # 4. No abstracts, double scopus, double max year, no sources, one max pub_date: picks scopus with max pub_date
+    input_df['bib_src'] = ['scopus', 'lens', 'scopus']
+    input_df['abstract'] = ['', '', '']
+    input_df['source'] = ['', '', '']
+    input_df['year'] = [2019, 2023, 2019]
+    input_df['pub_date'] = [pd.to_datetime('2019-10-12'), pd.to_datetime('2023-04-08'), pd.to_datetime('2019-10-10')]
+    expected_output_df['abstract'] = ['']
+    expected_output_df['source'] = ['']
+    expected_output_df['year'] = [2019]
+    expected_output_df['pub_date'] = [pd.to_datetime('2019-10-12')]
+
+    output_df = remove_title_duplicates(input_df).drop(columns = remove_cols)
+    tm.assert_frame_equal(output_df.reset_index(drop = True), expected_output_df.reset_index(drop = True))
+
+    # 5. No abstracts, double scopus, double max year, one source: picks scopus with that source
+    input_df['bib_src'] = ['scopus', 'lens', 'scopus']
+    input_df['abstract'] = ['', '', '']
+    input_df['source'] = ['', '', 'S2']
+    input_df['year'] = [2019, 2023, 2019]
+    input_df['pub_date'] = [pd.to_datetime('2019-10-12'), pd.to_datetime('2023-04-08'), pd.to_datetime('2019-10-10')]
+    expected_output_df['abstract'] = ['']
+    expected_output_df['source'] = ['S2']
+    expected_output_df['year'] = [2019]
+    expected_output_df['pub_date'] = [pd.to_datetime('2019-10-10')]
+
+    output_df = remove_title_duplicates(input_df).drop(columns = remove_cols)
+    tm.assert_frame_equal(output_df.reset_index(drop = True), expected_output_df.reset_index(drop = True))
+
+    # 6. One abstract (not scopus), double scopus, double max year, one source: picks lens with the abstract
+    input_df['bib_src'] = ['scopus', 'lens', 'scopus']
+    input_df['abstract'] = ['', 'abs1', '']
+    input_df['source'] = ['', '', 'S2']
+    input_df['year'] = [2019, 2023, 2019]
+    input_df['pub_date'] = [pd.to_datetime('2019-10-12'), pd.to_datetime('2023-04-08'), pd.to_datetime('2019-10-10')]
+    expected_output_df['bib_src'] = ['lens']
+    expected_output_df['abstract'] = ['abs1']
+    expected_output_df['source'] = ['']
+    expected_output_df['year'] = [2023]
+    expected_output_df['pub_date'] = [pd.to_datetime('2023-04-08')]
+
+    output_df = remove_title_duplicates(input_df).drop(columns = remove_cols)
+    tm.assert_frame_equal(output_df.reset_index(drop = True), expected_output_df.reset_index(drop = True))
+
+    # 7. Like 4, but no scopus (4: no abstracts, double max year, no sources, one max pub_date): picks dims with max pub_date
+    input_df['bib_src'] = ['dims', 'dims', 'lens']
+    input_df['abstract'] = ['', '', '']
+    input_df['source'] = ['', '', '']
+    input_df['year'] = [2019, 2017, 2019]
+    input_df['pub_date'] = [pd.to_datetime('2019-10-12'), pd.to_datetime('2017-04-08'), pd.to_datetime('2019-10-10')]
+    expected_output_df['bib_src'] = ['dims']
+    expected_output_df['abstract'] = ['']
+    expected_output_df['source'] = ['']
+    expected_output_df['year'] = [2019]
+    expected_output_df['pub_date'] = [pd.to_datetime('2019-10-12')]
+
+    output_df = remove_title_duplicates(input_df).drop(columns = remove_cols)
+    tm.assert_frame_equal(output_df.reset_index(drop = True), expected_output_df.reset_index(drop = True))
+
+    # 8. All other scenarios lead to random picks
+
+    for i in range(10):
+        # 8.1 No abstract, no scopus, duplicate max year, no source, two max pub_date: picks randomly from max pub_date records
+        input_df['id'] = [0, 1, 2]
+        input_df['bib_src'] = ['lens', 'dims', 'dims']
+        input_df['abstract'] = ['', '', '']
+        input_df['source'] = ['', '', '']
+        input_df['year'] = [2019, 2017, 2019]
+        input_df['pub_date'] = [pd.to_datetime('2019-06-12'), pd.NaT, pd.to_datetime('2019-06-12')]
+
+        output_df = remove_title_duplicates(input_df).drop(columns = remove_cols)
+        assert output_df['id'].iloc[0] in [0, 2]
+
+        # 8.2 No abstract, no scopus, duplicate max year, two sources, two max pub_date: picks randomly from records with a source
+        input_df['id'] = [0, 1, 2]
+        input_df['bib_src'] = ['lens', 'dims', 'dims']
+        input_df['abstract'] = ['', '', '']
+        input_df['source'] = ['', 'S1', 'S2']
+        input_df['year'] = [2019, 2017, 2019]
+        input_df['pub_date'] = [pd.to_datetime('2019-06-12'), pd.NaT, pd.to_datetime('2019-06-12')]
+
+        output_df = remove_title_duplicates(input_df).drop(columns = remove_cols)
+        assert output_df['id'].iloc[0] in [1, 2]
+
+        # 8.3 No abstract, no scopus, duplicate max year, no sources, no max pub_date: picks randomly from records with max year
+        input_df['id'] = [0, 1, 2]
+        input_df['bib_src'] = ['lens', 'dims', 'dims']
+        input_df['abstract'] = ['', '', '']
+        input_df['source'] = ['', '', '']
+        input_df['year'] = [2023, 2023, 2019]
+        input_df['pub_date'] = [pd.NaT, pd.NaT, pd.NaT]
+
+        output_df = remove_title_duplicates(input_df).drop(columns = remove_cols)
+        assert output_df['id'].iloc[0] in [0, 1]
+
+
+test_merge_source_cols()
+test_pub_date_year()
+test_merge_bib_src_cols()
+test_merge_n_cited_cols()
+test_merge_fos_anzsrc_cols()
+test_merge_kws_cols()
+test_merge_authors_cols()
+test_complex_case()
+
+
+dup_1_0_row = [
     {
         'authors': "Kobayashi, T.; Hasui, K.",
         'title': "Efficient immunization strategies to prevent financial contagion",
@@ -62,7 +505,7 @@ dup_1_1_df = [
     }
 ]
 
-dup_1_2_df = [
+dup_1_1_row = [
     {
         'authors': "Kobayashi, T.; Hasui, K.",
         'title': "Efficient immunization strategies to prevent financial contagion",
@@ -84,7 +527,7 @@ dup_1_2_df = [
     }
 ]
 
-dup_1_3_df = [
+dup_1_2_row = [
     {
         'authors': "Kobayashi, T.; Hasui, K.",
         'title': "Efficient immunization strategies to prevent financial contagion",
@@ -106,7 +549,7 @@ dup_1_3_df = [
     }
 ]
 
-dup_2_1_df = [
+dup_2_0_row = [
     {
         'authors': "Laskin, D.M.",
         'title': "Should prophylactic antibiotics be used for patients having removal of erupted teeth",
@@ -128,7 +571,7 @@ dup_2_1_df = [
     }
 ]
 
-dup_2_2_df = [
+dup_2_1_row = [
     {
         'authors': "Laskin, D.M.",
         'title': "Should prophylactic antibiotics be used for patients having removal of erupted teeth",
@@ -171,114 +614,3 @@ dup_3_1_df = [
         'dim_id': "pub.1007905354"
     }
 ]
-
-new_cols = ['bib_srcs', 'sources']  # the new columns that are created in the function remove_duplicate_titles
-
-# Test case with simple changes
-#   1. Capitalises the 'source'
-def test_single_standard_df():
-    input_df = pd.DataFrame(dup_1_2_df)
-    expected_output_df = input_df.copy()
-    remove_cols = new_cols  # remove the new columns that are created in the function remove_duplicate_titles
-
-    # Data type changes made in the function
-    expected_output_df['year'] = expected_output_df['year'].astype(int)
-    expected_output_df['n_cited'] = expected_output_df['n_cited'].astype(int)
-    expected_output_df['pub_date'] = pd.to_datetime(expected_output_df['pub_date'])
-
-    # Capitalises the source
-    expected_output_df['source'] = 'Scientific Reports'
-
-    output_df = remove_title_duplicates(input_df)
-
-    assert([col in output_df.columns for col in remove_cols])
-
-    output_df.drop(columns = remove_cols, inplace = True)
-
-    for col in output_df.columns:   # use this for pin-pointing problem column
-        assert output_df[col].equals(expected_output_df[col])
-
-# Test case with changes to pub_date and year
-#   1. pub_date given, year nan: year is pub_date year
-#   2. year given, pub_date nan: pub:date is 1/1/year
-#   3. neither year nor pub_date are given: both remain nan
-def test_pub_date_year():
-    input_df = pd.DataFrame(dup_1_1_df)
-    expected_output_df = input_df.copy()
-    remove_cols = new_cols  # remove the new columns that are created in the function remove_duplicate_titles
-
-    # Data type changes made by the function
-    expected_output_df['n_cited'] = expected_output_df['n_cited'].astype(int)
-
-    # 1. pub_date given, year nan: year is pub_date year
-    input_df['year'] = np.nan
-    input_df['pub_date'] = '2014-01-23'
-    expected_output_df['year'] = 2014
-    expected_output_df['pub_date'] = pd.to_datetime('2014-01-23')
-    output_df = remove_title_duplicates(input_df).drop(columns = remove_cols)
-    assert output_df.equals(expected_output_df)
-
-    # 2. year given, pub_date nan: pub:date is 1/1/year
-    input_df['year'] = 1997
-    input_df['pub_date'] = np.nan
-    expected_output_df['year'] = 1997
-    expected_output_df['pub_date'] = pd.to_datetime('1997-01-01')
-    output_df = remove_title_duplicates(input_df).drop(columns = remove_cols)
-    assert output_df.equals(expected_output_df)
-
-    # 3. neither year nor pub_date are given: both remain nan
-    input_df['year'] = np.nan
-    input_df['pub_date'] = np.nan
-    expected_output_df['year'] = np.nan
-    expected_output_df['pub_date'] = pd.NaT
-    output_df = remove_title_duplicates(input_df).drop(columns = remove_cols)
-    assert output_df.equals(expected_output_df)
-
-# Test case with merging of sources
-#   1. Sources are the same, but with difference in white spaces and capitalisation
-#   2. Some sources are different
-def test_merge_to_single_source():
-    input_df_1 = pd.DataFrame([dup_2_1_df[0], dup_2_2_df[0]])
-    expected_output_df_1 = input_df_1.copy()
-    input_df_2 = pd.DataFrame([dup_1_1_df[0], dup_1_2_df[0], dup_1_3_df[0]])
-    expected_output_df_2 = input_df_2.copy()
-    remove_cols = list(set(new_cols) - set(['sources']))  # remove all new except 'sources'
-
-    # Data type changes made in the function
-    expected_output_df_1['year'] = expected_output_df_1['year'].astype(int)
-    expected_output_df_2['year'] = expected_output_df_2['year'].astype(int)
-    expected_output_df_1['n_cited'] = 7
-    expected_output_df_2['n_cited'] = expected_output_df_2['n_cited'].astype(int)
-    expected_output_df_1['pub_date'] = pd.to_datetime(expected_output_df_1['pub_date'])
-    expected_output_df_2['pub_date'] = pd.to_datetime(expected_output_df_2['pub_date'])
-
-    # 1. Sources are the same, but with difference in white spaces and capitalisation
-    # input_df_1['source'].iloc[1] = 'Journal of finance'
-    # expected_output_df_1['sources'] = 'Scientific Reports; Journal of Finance'
-    expected_output_df_1['pub_date'] = pd.to_datetime('2011-01-01')
-    expected_output_df_1['sources'] = 'Oral and Maxillofacial Surgery Clinics of North America'
-    expected_output_df_1['fos'] = input_df_1['fos'].iloc[1]
-    expected_output_df_1['anzsrc_2020'] = None
-    expected_output_df_1['fos'] = input_df_1['fos'].iloc[1]
-    expected_output_df_1['fos'] = input_df_1['fos'].iloc[1]
-    expected_output_df_1['fos'] = input_df_1['fos'].iloc[1]
-
-    expected_output_df_1.drop(1, inplace = True)
-    output_df = remove_title_duplicates(input_df_1).drop(columns = remove_cols)
-    output_df['anzsrc_2020'].equals(expected_output_df_1['anzsrc_2020'])
-
-    for col in output_df.columns:   # use this for pin-pointing problem column
-        assert output_df[col].equals(expected_output_df_1[col])
-
-    assert output_df.equals(expected_output_df_1)
-
-    # 2. Some sources are different
-
-
-
-
-
-
-# test_single_standard_df()
-# test_pub_date_year()
-test_merge_to_single_source()
