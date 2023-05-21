@@ -21,8 +21,9 @@ def modify_cols_biblio_df(biblio_df_: pd.DataFrame,
                                      require_cols = False,
                                      ) -> pd.DataFrame:
     """
-    Rename and retain columns in the bibliographic dataset `biblio_df` based on `reshape_base` with its
-    preset criteria or on `reshape_filter`, where you define what column to retain and how to rename them.
+    Rename and retain columns in the bibliographic dataset `biblio_df` based on `reshape_base` 
+    with its preset criteria or on `reshape_filter`, where you define what column to retain and 
+    how to rename them.
     
     The reshape_base parameter allows you to specify preset criteria for renaming and retaining the columns 
     in the bibliographic `DataFrame`. The available values for `reshape_base` are defined in the 
@@ -684,15 +685,6 @@ def remove_title_duplicates(biblio_df_: pd.DataFrame) -> pd.DataFrame:
 
     if not biblio_df_['bib_src'].apply(lambda x: BiblioSource.is_valid_value(x)).all():
         raise ValueError(f"One or several values in 'bib_src' are not in {BiblioSource.valid_values_str()}")
-   
-    # FIXME: Temporary code: write input df to file
-    # write_df(biblio_df = biblio_df_[['authors', 'title', 'abstract', 'year', 'pub_date', 
-    #                                  'n_cited', 'source', 'kws', 'fos', 'anzsrc_2020', 
-    #                                  'auth_affils', 'link', 'links', 'bib_src', 'scopus_id', 
-    #                                  'lens_id', 'dim_id']],
-    #          biblio_project_dir = 'systemic_risk',
-    #          output_dir = 'results',
-    #          output_file = 'tmp_sr.csv')
 
     biblio_df = biblio_df_.copy()
 
@@ -824,7 +816,7 @@ def remove_title_duplicates(biblio_df_: pd.DataFrame) -> pd.DataFrame:
                     update_dict[(row_idx, 'anzsrc_2020')] = value
 
             # Merge the values in the keywords (kws) column
-            if 'kws' in group.columns:  # FIXME: Apply the missing value handling to all the above (fos, anzsrc, ...)
+            if 'kws' in group.columns:
                 unique_kws = group['kws'].apply(empty_strings_to_nan).dropna() 
 
                 if not unique_kws.empty:
@@ -904,7 +896,7 @@ def remove_title_duplicates(biblio_df_: pd.DataFrame) -> pd.DataFrame:
             # If at least one publication in the group has an abstract,
             # remove any publication in the group that doesn't have an abstract
             # and then reset the group with the removed publications
-            if group['abstract'].apply(is_not_none_nan_empty).any():     # FIXME: correct all other instances where I use dropna()
+            if group['abstract'].apply(is_not_none_nan_empty).any():
                 items_to_drop = group[group['abstract'].apply(is_none_nan_empty)]    # drops all NAN and empty abstracts
                 group = group.drop(items_to_drop.index)
                 drop_rows.append(items_to_drop.index.to_list())
@@ -964,15 +956,6 @@ def remove_title_duplicates(biblio_df_: pd.DataFrame) -> pd.DataFrame:
     if 'n_cited' in biblio_df.columns:
         biblio_df['n_cited'] = biblio_df['n_cited'].fillna(0)
         biblio_df['n_cited'] = biblio_df['n_cited'].astype(int)
-
-    # # FIXME: Temporary code: write input df to file
-    # write_df(biblio_df = dup_df[['authors', 'title', 'abstract', 'year', 'pub_date', 
-    #                                  'n_cited', 'source', 'kws', 'fos', 'anzsrc_2020', 
-    #                                  'auth_affils', 'link', 'links', 'bib_src', 'scopus_id', 
-    #                                  'lens_id', 'dim_id']],
-    #          biblio_project_dir = 'systemic_risk',
-    #          output_dir = 'results',
-    #          output_file = 'tmp_dup_sr.csv')
 
     logger.info(f"Number of publications after removing duplicate titles: {biblio_df.shape[0]}")
 

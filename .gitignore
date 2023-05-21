@@ -6,9 +6,11 @@ data/*
 models/*
 examples/
 notebooks/deprecated
+notebooks/staging
 tests/deprecated
 site/
 
+src/deprecated
 src/co_terms.py
 src/count.py
 src/filter.py

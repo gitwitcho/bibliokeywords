@@ -200,7 +200,6 @@ def empty_strings_to_nan(value: Any) -> Union[float, Any]:
     return value
 
 
-
 def merge_biblio_dfs(*biblio_dfs_: pd.DataFrame) -> pd.DataFrame:
     '''
     Merge multiple bibliogrpahic datasets from different sources (Scopus, Lens, 
@@ -270,7 +269,7 @@ def write_df(biblio_df: pd.DataFrame,
 
     output_path = Path(root_dir, data_root_dir, biblio_project_dir, output_dir, output_file)
     
-    logger.info(f"Writing biblio_df to file {output_file}...")
+    logger.info(f"Writing biblio_df ({len(biblio_df)} records) to file '{output_file}'...")
 
     # Write the bibliographic dataset to output_file based on the file extension
     if Path(output_file).suffix == '.csv':
@@ -296,7 +295,7 @@ def missing_strings_to_empty(biblio_df_: pd.DataFrame) -> pd.DataFrame:
 
 def read_biblio_csv_files_to_df(biblio_project_dir: str, 
                                 input_dir: str, 
-                                csv_file_names: Union[str, List[str]] = '',
+                                input_files: Union[str, List[str]] = '',
                                 biblio_source: BiblioSource = BiblioSource.UNDEFINED,
                                 n_rows: Optional[int] = None,
                                 missing_str_to_empty = True,
@@ -356,15 +355,15 @@ def read_biblio_csv_files_to_df(biblio_project_dir: str,
     skip_rows = 1 if biblio_source == BiblioSource.DIMS else 0
 
     # Convert single file name to list
-    if isinstance(csv_file_names, str):
-        csv_file_names = [csv_file_names] if csv_file_names else []
+    if isinstance(input_files, str):
+        input_files = [input_files] if input_files else []
 
     # Add .csv extension if missing
-    csv_file_names = [f'{f}.csv' if not f.endswith('.csv') else f for f in csv_file_names]
+    input_files = [f'{f}.csv' if not f.endswith('.csv') else f for f in input_files]
 
     # Read all CSV files in the input directory if csv_files is empty
-    if not csv_file_names:
-        csv_file_names = [f.name for f in input_dir_path.glob('*.csv')]
+    if not input_files:
+        input_files = [f.name for f in input_dir_path.glob('*.csv')]
 
     # If n_rows = 0, keep all the rows in the dataframe
     if isinstance(n_rows, int) and (n_rows < 1):
@@ -373,9 +372,9 @@ def read_biblio_csv_files_to_df(biblio_project_dir: str,
     all_dfs = []
 
     # Read all CSV files and store in a list
-    logger.info(f'Reading {len(csv_file_names)} CSV files...')
+    logger.info(f'Reading {len(input_files)} CSV files...')
 
-    for csv_file_name in csv_file_names:
+    for csv_file_name in input_files:
         csv_path = input_dir_path / csv_file_name
         if sample:
             df = pd.read_csv(csv_path, skiprows = skip_rows, on_bad_lines = 'skip')
