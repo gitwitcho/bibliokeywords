@@ -17,7 +17,8 @@ from utilities import *
 def modify_cols_biblio_df(biblio_df_: pd.DataFrame,
                                      reshape_base: Optional[Reshape] = None,
                                      reshape_filter: Optional[Union[Dict,List]] = None,
-                                     keep_bib_src: bool = True
+                                     keep_bib_src: bool = True,
+                                     require_cols = False,
                                      ) -> pd.DataFrame:
     """
     Rename and retain columns in the bibliographic dataset `biblio_df` based on `reshape_base` with its
@@ -57,6 +58,9 @@ def modify_cols_biblio_df(biblio_df_: pd.DataFrame,
             Flag indicating whether to retain the 'bib_src' column in the output `DataFrame`. Otherwise
             it will be removed when applying `rehshape_base`and `reshape_column`(unless you provide it in the list).
             The values in `bib_src` are used in some of the other functions. 
+        require_cols:
+            - True: the dataframe needs to have all the columns specified in either reshape_base and/or reshape_filter
+            - False: columns in reshape_base and/or reshape_filter that are not in the dataframe are ignored
     Returns:
         The modified bibliographic `DataFrame`.
 
@@ -69,22 +73,31 @@ def modify_cols_biblio_df(biblio_df_: pd.DataFrame,
     biblio_df = biblio_df_.copy()
 
     if reshape_base:
-        if not all(col in biblio_df.columns for col in reshape_strucs[reshape_base.value].keys()):
-            raise ValueError(f"One or more columns not found in biblio_df: {reshape_strucs[reshape_base.value]}")
-        
-        reshape_columns = list(reshape_strucs[reshape_base.value].keys())
+        reshape_dict = reshape_strucs[reshape_base.value]
+
+        if not all(col in biblio_df.columns for col in reshape_dict.keys()):
+            if require_cols:
+                raise ValueError(f"One or more columns not found in biblio_df: {reshape_strucs[reshape_base.value]}")
+            else:
+                reshape_dict = {key: value for key, value in reshape_dict.items() if value in biblio_df.columns}
+
+        reshape_columns = list(reshape_dict.keys())
 
         if ('bib_src' in biblio_df.columns) and ('bib_src' not in reshape_columns):
             reshape_columns.append('bib_src')
 
-        biblio_df = biblio_df[reshape_columns].rename(columns = reshape_strucs[reshape_base.value])
+        biblio_df = biblio_df[reshape_columns].rename(columns = reshape_dict)
 
     if reshape_filter:
 
         if isinstance(reshape_filter, List):
+
             if not all(col in biblio_df.columns for col in reshape_filter):
-                raise ValueError(f"One or more columns not found in biblio_df: {reshape_filter}")
-            
+                if require_cols:
+                    raise ValueError(f"One or more columns not found in biblio_df: {reshape_filter}")
+                else:
+                    reshape_filter = [col for col in reshape_filter if col in biblio_df.columns]
+
             if ('bib_src' in biblio_df.columns) and ('bib_src' not in reshape_filter):
                 reshape_filter.append('bib_src')
 
@@ -93,8 +106,11 @@ def modify_cols_biblio_df(biblio_df_: pd.DataFrame,
         elif isinstance(reshape_filter, Dict):
 
             if not all(col in biblio_df.columns for col in reshape_filter.keys()):
-                raise ValueError(f"One or more columns not found in biblio_df: {reshape_filter}")
-            
+                if require_cols:
+                    raise ValueError(f"One or more columns not found in biblio_df: {reshape_filter}")
+                else:
+                    reshape_filter = {key: value for key, value in reshape_filter.items() if value in biblio_df.columns}
+
             reshape_columns = list(reshape_filter.keys())
 
             if 'bib_src' not in reshape_columns:
@@ -615,7 +631,7 @@ def clean_dummy_title(title):
     title = title.lower()
 
     # Remove special characters and excess white spaces
-    title = re.sub(r'[^a-zA-Z0-9\s]', '', title)
+    title = re.sub(r'[^a-zA-Z0-9\s-]', '', title).replace('-', ' ')
     title = re.sub(r'\s+', ' ', title.strip())
 
     return title
@@ -665,6 +681,9 @@ def remove_title_duplicates(biblio_df_: pd.DataFrame) -> pd.DataFrame:
     # Ensure that biblio_df has columns title and bib_src
     if 'title' not in biblio_df_.columns or 'bib_src' not in biblio_df_.columns:
         raise ValueError("The columns 'title' and/or 'bib_src' are missing from the bibliographic dataset")
+
+    if not biblio_df_['bib_src'].apply(lambda x: BiblioSource.is_valid_value(x)).all():
+        raise ValueError(f"One or several values in 'bib_src' are not in {BiblioSource.valid_values_str()}")
    
     # FIXME: Temporary code: write input df to file
     # write_df(biblio_df = biblio_df_[['authors', 'title', 'abstract', 'year', 'pub_date', 
@@ -756,7 +775,7 @@ def remove_title_duplicates(biblio_df_: pd.DataFrame) -> pd.DataFrame:
 
 
         if(idx % 100 == 0):
-            print(f'Duplicate group: #{idx} ', end = '\r')   # '\r' to overwrite the previous string; ' ' to append to the right
+            print(f'Duplicate group: #{idx} ', end = '\r', flush = True)   # '\r' to overwrite the previous string; ' ' to append to the right
 
         if len(group) > 1:
             dup_df = pd.concat([dup_df, group])
@@ -780,9 +799,10 @@ def remove_title_duplicates(biblio_df_: pd.DataFrame) -> pd.DataFrame:
             
             # Merge the values in the fos column
             if 'fos' in group.columns:
-                unique_fos = group['fos'].apply(empty_strings_to_nan).dropna().str.split(';').explode().str.strip().unique()
-
-                if unique_fos.size > 0:
+                unique_fos = group['fos'].apply(empty_strings_to_nan).dropna()
+                
+                if not unique_fos.empty:
+                    unique_fos = unique_fos.str.split(';').explode().str.strip().unique()
                     group['fos'] = '; '.join(np.sort(unique_fos[unique_fos != '']))
                 else:
                     group['fos'] = ''
@@ -792,34 +812,41 @@ def remove_title_duplicates(biblio_df_: pd.DataFrame) -> pd.DataFrame:
 
             # Merge the values in the anzsrc_2020 column
             if 'anzsrc_2020' in group.columns:
-                unique_anzsrc = group['anzsrc_2020'].apply(empty_strings_to_nan).dropna().str.split(';').explode().str.strip().unique()
-                if unique_anzsrc.size > 0:
+                unique_anzsrc = group['anzsrc_2020'].apply(empty_strings_to_nan).dropna()
+                
+                if not unique_anzsrc.empty:
+                    unique_anzsrc = unique_anzsrc.str.lower().str.split(';').explode().str.strip().unique()
                     group['anzsrc_2020'] = '; '.join(np.sort(unique_anzsrc[unique_anzsrc != '']))
                 else:
                     group['anzsrc_2020'] = ''
-                # biblio_df.update(group[['anzsrc_2020']])
-                for row_idx, value in group['anzsrc_2020'].items():     # NEW PERFORMANCE CODE
+
+                for row_idx, value in group['anzsrc_2020'].items():
                     update_dict[(row_idx, 'anzsrc_2020')] = value
 
             # Merge the values in the keywords (kws) column
             if 'kws' in group.columns:  # FIXME: Apply the missing value handling to all the above (fos, anzsrc, ...)
                 unique_kws = group['kws'].apply(empty_strings_to_nan).dropna() 
+
                 if not unique_kws.empty:
-                #.str.lower().str.split(';').explode().str.strip().unique()
-                    unique_kws.str.lower().str.split(';').explode().str.strip().unique()
+                    unique_kws = unique_kws.str.lower().str.split(';').explode().str.strip().unique()
                     group['kws'] = '; '.join(np.sort(unique_kws[unique_kws != '']))
                 else:
                     group['kws'] = ''
-                # biblio_df.update(group[['kws']])
-                for row_idx, value in group['kws'].items():     # NEW PERFORMANCE CODE
+
+                for row_idx, value in group['kws'].items():
                     update_dict[(row_idx, 'kws')] = value
 
             # Create a new column 'links' that has all the URLs separate with a space
             if 'links' in group.columns:
-                unique_links = group['links'].apply(empty_strings_to_nan).dropna().str.split(' ').explode().str.strip().unique()
-                group['links'] = ' '.join(np.sort(unique_links[unique_links != '']))
-                # biblio_df.update(group[['links']])
-                for row_idx, value in group['links'].items():     # NEW PERFORMANCE CODE
+                unique_links = group['links'].apply(empty_strings_to_nan).dropna()
+
+                if not unique_links.empty:
+                    unique_links = unique_links.str.split(' ').explode().str.strip().unique()
+                    group['links'] = ' '.join(np.sort(unique_links[unique_links != '']))
+                else:
+                    group['links'] = ''
+
+                for row_idx, value in group['links'].items():
                     update_dict[(row_idx, 'links')] = value
 
             # Create a new column 'bib_srcs' that has all the bib_src strings of the duplicate titles
@@ -979,6 +1006,8 @@ def clean_biblio_df(biblio_df_: pd.DataFrame) -> pd.DataFrame:
         None.
 
     """
+    # TODO:
+    #   - Handle "No abstract available" in Scopus.
 
     biblio_df = biblio_df_.copy()
 

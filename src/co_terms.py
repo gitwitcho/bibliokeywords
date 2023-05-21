@@ -2,7 +2,6 @@ import pandas as pd
 import numpy as np
 import igraph as ig
 import random
-import sys
 
 import nltk
 nltk.download('wordnet')

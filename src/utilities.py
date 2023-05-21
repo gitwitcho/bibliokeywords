@@ -299,7 +299,8 @@ def read_biblio_csv_files_to_df(biblio_project_dir: str,
                                 csv_file_names: Union[str, List[str]] = '',
                                 biblio_source: BiblioSource = BiblioSource.UNDEFINED,
                                 n_rows: Optional[int] = None,
-                                missing_str_to_empty = True
+                                missing_str_to_empty = True,
+                                sample = False
                                 ) -> pd.DataFrame:
     """
     Read bibliographic datasets from CSV files and store in a `DataFrame`.
@@ -376,16 +377,25 @@ def read_biblio_csv_files_to_df(biblio_project_dir: str,
 
     for csv_file_name in csv_file_names:
         csv_path = input_dir_path / csv_file_name
-        df = pd.read_csv(csv_path, nrows = n_rows, skiprows = skip_rows, on_bad_lines = 'skip')
+        if sample:
+            df = pd.read_csv(csv_path, skiprows = skip_rows, on_bad_lines = 'skip')
+        else:
+            df = pd.read_csv(csv_path, nrows = n_rows, skiprows = skip_rows, on_bad_lines = 'skip')
         all_dfs.append(df)
         logger.info(f'File: {csv_file_name}, Size: {len(df)} rows')
 
     # Merge all dataframes into one
     biblio_df = pd.concat(all_dfs, ignore_index = True)
 
-    # Apply cutoff again in case multiple files were read
-    if isinstance(n_rows, int) and (n_rows > 0):
-        biblio_df = biblio_df.head(n_rows)
+    # Sample or if not sampling, apply the cutoff again in case multiple files were read
+    if sample:
+        if isinstance(n_rows, int) and (n_rows > 0):
+            biblio_df = biblio_df.sample(n = n_rows).reset_index(drop = True)
+        else:
+            raise ValueError(f"Because sample = True, the argument n_rows needs to be set to a positive integer")
+    else:
+        if isinstance(n_rows, int) and (n_rows > 0):
+            biblio_df = biblio_df.head(n_rows)
 
     # Set all missing string values to empty string (if missing_str_to_empty = True, which is the default)
     if missing_str_to_empty:

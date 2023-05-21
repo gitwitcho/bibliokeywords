@@ -16,11 +16,20 @@ model_root_dir = 'models'
 # - Automatically test for uniqueness of values in the reshape structures below
 
 class BiblioSource(Enum):
-    SCOPUS = 1
-    LENS = 2
-    DIMS = 3
-    BIBLIO = 4
-    UNDEFINED = 5
+    SCOPUS = 'scopus'
+    LENS = 'lens'
+    DIMS = 'dims'
+    BIBLIO = 'biblio'
+    UNDEFINED = 'undefined'
+
+    @classmethod
+    def is_valid_value(cls, value):
+        return value in [member.value for member in cls if member != cls.UNDEFINED]
+    
+    @classmethod
+    def valid_values_str(cls):
+        s = '[' + ', '.join([member.value for member in cls if member != cls.UNDEFINED]) + ']'
+        return s
 
 class Reshape(Enum):
     SCOPUS_ALL = 1
@@ -176,7 +185,7 @@ reshape_struc_lens_compact = {'Lens ID': 'lens_id',
                             'bib_src': 'bib_src'}
 
 reshape_struc_dims_all = {'Rank': 'rank', 
-                          'Publication ID': 'dim_id', 
+                          'Publication ID': 'dims_id', 
                           'DOI': 'doi', 
                           'PMID': 'pmid', 
                           'PMCID': 'pmcid', 
@@ -231,7 +240,7 @@ reshape_struc_dims_all = {'Rank': 'rank',
                           'bib_src': 'bib_src'}
 
 reshape_struc_dims_full = {'Rank': 'rank', 
-                          'Publication ID': 'dim_id', 
+                          'Publication ID': 'dims_id', 
                           'DOI': 'doi', 
                           'ISBN': 'isbn', 
                           'Title': 'title',
@@ -257,7 +266,7 @@ reshape_struc_dims_full = {'Rank': 'rank',
                           'HRCS RAC Categories':'hrcs_rac',
                           'bib_src': 'bib_src'}
 
-reshape_struc_dims_compact = {'Publication ID': 'dim_id', 
+reshape_struc_dims_compact = {'Publication ID': 'dims_id', 
                           'Title': 'title',
                           'Abstract': 'abstract', 
                           'Source title': 'source',

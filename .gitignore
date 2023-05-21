@@ -1,8 +1,18 @@
 .vscode/
 .ipynb_checkpoints/
+.pytest_cache/
 
 data/*
+models/*
 examples/
+notebooks/deprecated
 site/
 
-!data/example_data
+src/co_terms.py
+src/count.py
+src/filter.py
+src/highlight.py
+src/topics.py
+
+!data/example_project
+!models/example_project
