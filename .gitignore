@@ -6,6 +6,7 @@ data/*
 models/*
 examples/
 notebooks/deprecated
+tests/deprecated
 site/
 
 src/co_terms.py
