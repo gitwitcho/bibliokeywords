@@ -5,7 +5,7 @@ from typing import List, Dict
 from IPython.core.display import HTML
 from tqdm import tqdm
 from clean import *
-from co_terms import *
+# from co_terms import *
 from filter import *
 
 
