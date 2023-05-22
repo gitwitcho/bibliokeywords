@@ -12,6 +12,7 @@ from config import *
 from typing import Union, List, Dict, Optional, Any
 
 nltk.download('wordnet')
+nltk.download('punkt')
 nlp = spacy.load("en_core_web_sm")  # conda install -c conda-forge spacy-model-en_core_web_sm
 
 def get_root_dir() -> Path:
