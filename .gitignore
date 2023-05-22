@@ -12,9 +12,9 @@ tests/deprecated
 site/
 
 src/deprecated
+src/staging
 src/co_terms.py
 src/count.py
-src/filter.py
 src/highlight.py
 src/topics.py
 
