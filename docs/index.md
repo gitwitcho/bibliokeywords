@@ -1,5 +1,7 @@
 # Welcome to BiblioKeywords
 
+<img src="assets/images/components.png" width="70%" height="70%"/>
+
 ### Jupter notebooks to process bibliographic datasets
 | Name  | Link  |
 |---|---|
