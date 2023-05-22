@@ -14,7 +14,6 @@ site/
 src/deprecated
 src/staging
 src/co_terms.py
-src/count.py
 src/highlight.py
 src/topics.py
 
