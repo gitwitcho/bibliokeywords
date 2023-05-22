@@ -13,7 +13,6 @@ site/
 
 src/deprecated
 src/staging
-src/co_terms.py
 src/topics.py
 
 !data/example_project
