@@ -2,12 +2,6 @@ import pandas as pd
 import numpy as np
 import igraph as ig
 
-import nltk
-nltk.download('wordnet')
-
-import spacy
-nlp = spacy.load("en_core_web_sm")  # conda install -c conda-forge spacy-model-en_core_web_sm
-
 from collections import Counter
 from typing import Tuple, Dict, List, Union, Optional
 from collections import Counter

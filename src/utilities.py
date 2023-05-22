@@ -1,6 +1,8 @@
 import pandas as pd
 import numpy as np
 import random
+import nltk
+import spacy
 
 from textblob import TextBlob
 from textblob import Word
@@ -9,6 +11,8 @@ from pathlib import Path
 from config import *
 from typing import Union, List, Dict, Optional, Any
 
+nltk.download('wordnet')
+nlp = spacy.load("en_core_web_sm")  # conda install -c conda-forge spacy-model-en_core_web_sm
 
 def get_root_dir() -> Path:
     """
