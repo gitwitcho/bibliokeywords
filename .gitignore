@@ -13,7 +13,6 @@ site/
 
 src/deprecated
 src/staging
-src/topics.py
 
 !data/example_project
 !models/example_project
