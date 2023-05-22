@@ -7,6 +7,7 @@ models/*
 examples/
 notebooks/deprecated
 notebooks/staging
+notebooks/gilbert
 tests/deprecated
 site/
 
