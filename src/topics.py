@@ -75,12 +75,6 @@ def generate_bert_topics(biblio_df_: pd.DataFrame,
     # Create a list of the titles
     docs = biblio_df[input_col].to_list()
 
-    # Remove NAN values from the list of abstracts
-    # logger.info(f'Removing {len([x for x in docs_all if x != x])} documents that are NAN...')
-    # docs_all = [x for x in docs_all if x == x]
-
-    logger.info(docs[:5])
-        
     # Set the timer
     start_time = time.time()
 
