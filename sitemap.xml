@@ -2,27 +2,27 @@
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
     <url>
          <loc>https://example.com/</loc>
-         <lastmod>2023-05-22</lastmod>
+         <lastmod>2023-05-23</lastmod>
          <changefreq>daily</changefreq>
     </url>
     <url>
          <loc>https://example.com/clean/</loc>
-         <lastmod>2023-05-22</lastmod>
+         <lastmod>2023-05-23</lastmod>
          <changefreq>daily</changefreq>
     </url>
     <url>
          <loc>https://example.com/config/</loc>
-         <lastmod>2023-05-22</lastmod>
+         <lastmod>2023-05-23</lastmod>
          <changefreq>daily</changefreq>
     </url>
     <url>
          <loc>https://example.com/mylogger/</loc>
-         <lastmod>2023-05-22</lastmod>
+         <lastmod>2023-05-23</lastmod>
          <changefreq>daily</changefreq>
     </url>
     <url>
          <loc>https://example.com/utilities/</loc>
-         <lastmod>2023-05-22</lastmod>
+         <lastmod>2023-05-23</lastmod>
          <changefreq>daily</changefreq>
     </url>
 </urlset>
