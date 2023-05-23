@@ -12,3 +12,8 @@ theme:
 
 plugins: 
     - mkdocstrings
+
+extra:
+  analytics:
+    provider: google
+    property: G-11YWW45KYH
