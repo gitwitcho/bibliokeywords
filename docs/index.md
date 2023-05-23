@@ -2,7 +2,7 @@
 
 <img src="assets/images/components.png" width="70%" height="70%"/>
 
-### Jupter notebooks to process bibliographic datasets
+### Jupyter notebooks to process bibliographic datasets
 | Name  | Link  |
 |---|---|
 | Clean datasets  | [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/gitwitcho/bibliokeywords/blob/master/notebooks/Clean.ipynb)  |
