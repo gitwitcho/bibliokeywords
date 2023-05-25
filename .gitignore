@@ -10,6 +10,7 @@ notebooks/staging
 notebooks/gilbert
 tests/deprecated
 site/
+streamlit/
 
 src/deprecated
 src/staging

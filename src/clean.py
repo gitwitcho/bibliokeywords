@@ -4,8 +4,9 @@ import re
 
 from typing import List, Optional, Union, Dict, Any
 
-from config import *
+from language import nltk_stopwords
 from utilities import *
+
 
 """
 

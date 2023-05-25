@@ -9,6 +9,9 @@ nav:
 
 theme:
     name: material
+    analytics:
+        gtag: G-11YWW45KYH
+
 
 plugins: 
     - mkdocstrings

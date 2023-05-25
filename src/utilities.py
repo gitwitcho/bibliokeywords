@@ -1,19 +1,17 @@
 import pandas as pd
 import numpy as np
-import random
-import nltk
-import spacy
+# import nltk
+# import spacy
 
-from textblob import TextBlob
-from textblob import Word
 from pathlib import Path
+from io import BytesIO
 
 from config import *
 from typing import Union, List, Dict, Optional, Any
 
-nltk.download('wordnet')
-nltk.download('punkt')
-nlp = spacy.load("en_core_web_sm")  # conda install -c conda-forge spacy-model-en_core_web_sm
+# nltk.download('wordnet')
+# nltk.download('punkt')
+# nlp = spacy.load("en_core_web_sm")  # conda install -c conda-forge spacy-model-en_core_web_sm
 
 def get_root_dir() -> Path:
     """
@@ -239,115 +237,6 @@ def merge_biblio_dfs(*biblio_dfs_: pd.DataFrame) -> pd.DataFrame:
     return merged_df
 
 
-def synonymise_terms_dict(string_counts_dict: Dict) -> Dict:
-
-    syn_dict = {}
-    terms = list(string_counts_dict.keys())
-
-    for term in terms:
-
-        # Find the synonyms of the term
-        synonyms = Word(term).synsets
-
-        # Create a list of the synonyms and and include the term
-        term_and_synonyms = list(set([term] + [syn.lemma_names()[0] for syn in synonyms]))      # type: ignore - Pylance: "cached_property" is not iterable
-
-        # Find a/the string/synonym with the highest count in the dictionary
-        max_value_term = max(term_and_synonyms, key = lambda string: string_counts_dict.get(string, 0))
-
-        # Get the strings with the highest count in string_counts
-        highest_value_terms = [string for string in term_and_synonyms if string_counts_dict.get(string, 0) == string_counts_dict[max_value_term]]
-
-        # Choose one string at random from the highest value strings
-        chosen_term = random.choice(highest_value_terms)
-
-        # Add the key-value pairs 'synonym: chosen_string' to the synonym dictionary.
-        # TODO: Currently, if the key exists, it will not add the alternative synonym 
-        # to the dictionary. For instance if the words 'luck' and 'risk' are in string_counts_dicts,
-        # then both might have 'hazard' among their synonyms. If 'luck' is processed
-        # first, then syn_dict will have an entry 'hazard: luck'. When 'risk' is then
-        # processed, the key-value pair 'hazard: risk' cannot be added to syn_dict since
-        # the key 'hazard' already exists. What can be done? Check which of both terms
-        # ('risk' and 'luck') has the highest count in string_counts_dict and use that 
-        # term as the synonym in syn_dict. 
-        syn_dict.update({new_key: chosen_term for new_key in term_and_synonyms if new_key != chosen_term and new_key not in syn_dict})
-
-
-    # Replace synonym strings in strings_count with their 'root' synonym and
-    # sum the corresponding counts
-    # FIXME: If a word has different meanings (a bank for instance), then not all its 
-    # synonyms are meaningful. If the word 'bank' refers to a financial institution, 
-    # then the code below will add them nonetheless to the dictionary. 
-    for key, value in syn_dict.items():     # key: synonyms, value: chosen 'root' synonym
-        if key in string_counts_dict:
-            if value in string_counts_dict:
-                string_counts_dict[value] += string_counts_dict.get(key, 0)
-            else:
-                string_counts_dict[value] = string_counts_dict.get(key, 0)
-            
-            string_counts_dict.pop(key, None)
-
-    return string_counts_dict
-
-
-def singularise_terms(terms: Union[List[str], str]) -> List[str]:
-    '''
-        Only singularise the last word in a term like 'physics based'
-    '''
-    # TODO:
-    #   - Run the profiler on this function since it is very slow
-    
-    singularised_terms = []
-    endings = ['ics']
-
-    if isinstance(terms, str):
-        terms = [terms]
-
-    for term in terms:
-        term = term.strip()
-        last_word = term.split(' ')[-1]
-
-        # Check whether the word is singular even if it ends in 's'
-        if term and nlp(last_word)[0].tag_ in {"NNS", "NNPS"} and not any(last_word.endswith(ending) for ending in endings):
-            last_word = ''.join(list(TextBlob(last_word).words.singularize()))    # type: ignore - Pylance: Cannot access member "singularize" for type "cached_property"
-            term_lst = term.split(' ')       
-            term_lst[-1] = last_word
-            term_str = ' '.join(term_lst)
-            singularised_terms += [term_str]
-        elif term:
-            singularised_terms += [term]
-
-    return singularised_terms
-
-
-def stem_terms_dict(string_counts_dict: Dict) -> Dict:
-    terms = list(string_counts_dict.keys())
-
-    for key in terms:
-        l = Word(key).stem()
-
-        if l != key:
-            if l in string_counts_dict:
-                string_counts_dict[l] += string_counts_dict[key]
-            else:
-                string_counts_dict[l] = string_counts_dict[key]
-
-            string_counts_dict.pop(key)
-
-    return string_counts_dict
-
-
-def stem_terms(terms: Union[List[str], str]) -> List[str]:
-
-    if isinstance(terms, str):
-        terms = [terms]
-
-    terms_dict = {string: 0 for string in terms}
-    stemmed_terms_list = list(set(stem_terms_dict(terms_dict).keys()))
-
-    return stemmed_terms_list
-
-
 def write_df(biblio_df: pd.DataFrame,
              biblio_project_dir: str,
              output_dir: str,
@@ -409,6 +298,38 @@ def missing_strings_to_empty(biblio_df_: pd.DataFrame) -> pd.DataFrame:
     biblio_df[string_columns] = biblio_df[string_columns].fillna('')
 
     return biblio_df
+
+
+def string_to_biblio_source(bstr: str) -> BiblioSource:
+
+    if bstr == 'scopus':
+        biblio_source = BiblioSource.SCOPUS
+    elif bstr == 'lens':
+        biblio_source = BiblioSource.LENS
+    elif bstr == 'dims':
+        biblio_source = BiblioSource.DIMS
+    elif bstr == 'biblio':
+        biblio_source = BiblioSource.BIBLIO
+    else:
+        biblio_source = BiblioSource.UNDEFINED
+
+    return biblio_source
+
+
+def biblio_source_to_string(biblio_source: BiblioSource) -> str:
+
+    if biblio_source == BiblioSource.SCOPUS:
+        bstr = 'scopus'
+    elif biblio_source == BiblioSource.LENS:
+        bstr = 'lens'
+    elif biblio_source == BiblioSource.DIMS:
+        bstr = 'dims'
+    elif biblio_source == BiblioSource.BIBLIO:
+        bstr = 'biblio'
+    else:
+        bstr = ''
+
+    return bstr
 
 
 def read_biblio_csv_files_to_df(biblio_project_dir: str, 
@@ -500,6 +421,69 @@ def read_biblio_csv_files_to_df(biblio_project_dir: str,
             df = pd.read_csv(csv_path, nrows = n_rows, skiprows = skip_rows, on_bad_lines = 'skip')
         all_dfs.append(df)
         logger.info(f'File: {csv_file_name}, Size: {len(df)} rows')
+
+    # Merge all dataframes into one
+    biblio_df = pd.concat(all_dfs, ignore_index = True)
+
+    # Sample or if not sampling, apply the cutoff again in case multiple files were read
+    if sample:
+        if isinstance(n_rows, int) and (n_rows > 0):
+            biblio_df = biblio_df.sample(n = n_rows).reset_index(drop = True)
+        else:
+            raise ValueError(f"Because sample = True, the argument n_rows needs to be set to a positive integer")
+    else:
+        if isinstance(n_rows, int) and (n_rows > 0):
+            biblio_df = biblio_df.head(n_rows)
+
+    # Set all missing string values to empty string (if missing_str_to_empty = True, which is the default)
+    if missing_str_to_empty:
+        biblio_df = missing_strings_to_empty(biblio_df)
+
+    # Create the bib_src column and set to the biblio_type
+    if biblio_source == BiblioSource.SCOPUS:
+        biblio_df['bib_src'] = 'scopus'
+    elif biblio_source == BiblioSource.LENS:
+        biblio_df['bib_src'] = 'lens'
+    elif biblio_source == BiblioSource.DIMS:
+        biblio_df['bib_src'] = 'dims'
+    elif biblio_source == BiblioSource.BIBLIO:
+        biblio_df['bib_src'] = 'biblio'
+    else:
+        raise ValueError(f"The parameter biblio_type needs to be set to: SCOPUS, LENS, DIMS, OR BIBLIO")
+
+    logger.info(f"Total number of publications in the dataframe: {len(biblio_df)}")
+
+    return biblio_df
+
+
+def read_uploaded_biblio_csv_files_to_df(file_likes: Union[List[BytesIO], BytesIO],
+                                         biblio_source: BiblioSource = BiblioSource.UNDEFINED,
+                                         n_rows: Optional[int] = None,
+                                         missing_str_to_empty = True,
+                                         sample = False
+                                         ) -> pd.DataFrame:
+    
+    if biblio_source == BiblioSource.UNDEFINED:
+        raise ValueError(f"The parameter biblio_source needs to be set to: SCOPUS, LENS, DIMS, OR BIBLIO")
+        
+    # Skip the first row in a Dimensions CSV file, which contains details about the search
+    skip_rows = 1 if biblio_source == BiblioSource.DIMS else 0
+
+    # If n_rows = 0, keep all the rows in the dataframe
+    if isinstance(n_rows, int) and (n_rows < 1):
+        n_rows = None
+
+    all_dfs = []
+
+    for file_like in file_likes:
+
+        if sample:
+            df = pd.read_csv(file_like, skiprows = skip_rows, on_bad_lines = 'skip')
+        else:
+            df = pd.read_csv(file_like, nrows = n_rows, skiprows = skip_rows, on_bad_lines = 'skip')
+        all_dfs.append(df)
+
+        # logger.info(f'File: {csv_file_name}, Size: {len(df)} rows')
 
     # Merge all dataframes into one
     biblio_df = pd.concat(all_dfs, ignore_index = True)

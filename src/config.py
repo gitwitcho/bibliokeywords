@@ -1,4 +1,4 @@
-import nltk
+# import nltk
 
 from mylogger import MyLogger
 from enum import Enum
@@ -299,13 +299,13 @@ lens_strings_remove = ['(',')','title:', 'abstract:', 'keyword:', 'not']
 dims_strings_remove = ['(', ')', 'not']
 
 
-# Download stopwords if they haven't been downloaded previously
-try:
-    nltk.data.find('corpora/stopwords')
-except LookupError:
-    nltk.download('stopwords')
+# # Download stopwords if they haven't been downloaded previously
+# try:
+#     nltk.data.find('corpora/stopwords')
+# except LookupError:
+#     nltk.download('stopwords')
 
-nltk_stopwords = nltk.corpus.stopwords.words('english')
+# nltk_stopwords = nltk.corpus.stopwords.words('english')
 
 
 # If verbose == True, set the logging level so that info messages are printed
