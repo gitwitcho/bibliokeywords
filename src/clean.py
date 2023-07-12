@@ -81,7 +81,7 @@ def modify_cols_biblio_df(biblio_df_: pd.DataFrame,
             if require_cols:
                 raise ValueError(f"One or more columns not found in biblio_df: {reshape_strucs[reshape_base.value]}")
             else:
-                reshape_dict = {key: value for key, value in reshape_dict.items() if value in biblio_df.columns}
+                reshape_dict = {key: value for key, value in reshape_dict.items() if key in biblio_df.columns}
 
         reshape_columns = list(reshape_dict.keys())
 
