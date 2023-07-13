@@ -30,6 +30,14 @@ class BiblioSource(Enum):
     def valid_values_str(cls):
         s = '[' + ', '.join([member.value for member in cls if member != cls.UNDEFINED]) + ']'
         return s
+    
+    @classmethod
+    def from_str(cls, value: str):
+        for member in cls:
+            if member.value == value:
+                return member
+        return None
+
 
 class Reshape(Enum):
     SCOPUS_ALL = 1
@@ -41,6 +49,8 @@ class Reshape(Enum):
     DIMS_ALL = 7
     DIMS_FULL = 8
     DIMS_COMPACT = 9
+    UNDEFINED = 10
+
 
 reshape_struc_scopus_all = {'Authors': 'authors', 
                              'Author(s) ID': 'author_ids', 
@@ -60,9 +70,19 @@ reshape_struc_scopus_all = {'Authors': 'authors',
                              'Authors with affiliations': 'auth_affils', 
                              'Abstract': 'abstract', 
                              'Author Keywords': 'kws_author', 
-                             'Index Keywords': 'kws_index', 
+                             'Index Keywords': 'kws_index',
+                             'Molecular Sequence Numbers': 'mol_num',
+                             'Chemicals/CAS': 'cas', 
+                             'Tradenames': 'trade_names', 
+                             'Manufacturers': 'manufacturers', 
+                             'References': 'references',
                              'Correspondence Address': 'address',
-                             'Editors': 'editors', 
+                             'Editors': 'editors',
+                             'Sponsors': 'sponsors',
+                             'Conference name': 'conf_name', 
+                             'Conference date': 'conf_date',
+                             'Conference location': 'conf_loc',
+                             'Conference code': 'conf_code',
                              'Publisher': 'publisher', 
                              'ISSN': 'issn', 
                              'ISBN': 'isbn', 
@@ -70,7 +90,7 @@ reshape_struc_scopus_all = {'Authors': 'authors',
                              'PubMed ID': 'pubmed_id',
                              'Language of Original Document': 'lang',
                              'Abbreviated Source Title': 'source_abbrev',
-                             'Document Type': 'doc_type',
+                             'Document Type': 'pub_type',
                              'Publication Stage': 'pub_stage',
                              'Open Access': 'open',
                              'Source':'scopus_source',
@@ -95,7 +115,7 @@ reshape_struc_scopus_full = {'Authors': 'authors',
                              'PubMed ID': 'pubmed_id',
                              'Language of Original Document': 'lang',
                              'Abbreviated Source Title': 'source_abbrev',
-                             'Document Type': 'doc_type',
+                             'Document Type': 'pub_type',
                              'Open Access': 'open',
                              'EID':'scopus_id',
                              'bib_src': 'bib_src'}
@@ -112,7 +132,7 @@ reshape_struc_scopus_compact = {'Authors': 'authors',
                                 'Index Keywords': 'kws_index', 
                                 'Language of Original Document': 'lang',
                                 'Abbreviated Source Title': 'source_abbrev',
-                                'Document Type': 'doc_type',
+                                'Document Type': 'pub_type',
                                 'EID':'scopus_id',
                                 'bib_src': 'bib_src'}
 

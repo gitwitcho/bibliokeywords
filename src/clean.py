@@ -203,7 +203,10 @@ def format_auth_scopus(authors: Union[str, float]) -> Union[str, float]:
     """
 
     if isinstance(authors, str) and authors != '':
-        authors_lst = authors.split(',')
+        if ';' in authors:  # check whether the Scopus author separator is a ; or a , (the export seems to produce both)
+            authors_lst = authors.split(';')
+        else:
+            authors_lst = authors.split(',')
 
         authors_str_lst = []
 
